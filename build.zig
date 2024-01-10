@@ -4,6 +4,22 @@ const raySdk = @import("raylib/src/build.zig");
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
 // runner.
+
+// pub fn build(b: *std.Build) void {
+//     const targets = [_][]const u8{ "aarch64-macos", "x86_64-macos", "aarch64-linux", "x86_64-linux-gnu", "x86_64-linux-musl", "x86_64-windows" };
+//
+//     inline for (targets) |target_string| {
+//         const target = try std.zig.CrossTarget.parse(.{ .arch_os_abi = target_string });
+//         const exe = b.addExecutable(.{
+//             .name = "main_" ++ target_string,
+//             .root_source_file = .{ .path = "src/main.zig" },
+//             .target = target,
+//             .optimize = .ReleaseSafe,
+//         });
+//         b.installArtifact(exe);
+//     }
+// }
+
 pub fn build(b: *std.Build) void {
     // Standard target options allows the person running `zig build` to choose
     // what target to build for. Here we do not override the defaults, which
@@ -16,19 +32,19 @@ pub fn build(b: *std.Build) void {
     // set a preferred release mode, allowing the user to decide how to optimize.
     const optimize = b.standardOptimizeOption(.{});
 
-    const lib = b.addStaticLibrary(.{
-        .name = "pixel-edit",
-        // In this case the main source file is merely a path, however, in more
-        // complicated build scripts, this could be a generated file.
-        .root_source_file = .{ .path = "src/root.zig" },
-        .target = target,
-        .optimize = optimize,
-    });
+    // const lib = b.addStaticLibrary(.{
+    //     .name = "pixel-edit",
+    //     // In this case the main source file is merely a path, however, in more
+    //     // complicated build scripts, this could be a generated file.
+    //     .root_source_file = .{ .path = "src/root.zig" },
+    //     .target = target,
+    //     .optimize = optimize,
+    // });
 
     // This declares intent for the library to be installed into the standard
     // location when the user invokes the "install" step (the default step when
     // running `zig build`).
-    b.installArtifact(lib);
+    // b.installArtifact(lib);
 
     const exe = b.addExecutable(.{
         .name = "pixel-edit",
