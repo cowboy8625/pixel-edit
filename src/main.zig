@@ -103,7 +103,7 @@ pub fn main() !void {
         }
 
         if (button_save.update()) {
-            save(&canvas, screen_width, screen_height, ctx.brush_size);
+            save(&canvas, screen_width, screen_height);
         }
 
         if (button_eraser.update()) {
@@ -165,23 +165,23 @@ fn normalize_mouse(comptime T: type, brush_size: c_int) struct { x: T, y: T } {
     return .{ .x = x, .y = y };
 }
 
-fn save(canvas: *Canvas, screen_width: c_int, screen_height: c_int, brush_size: c_int) void {
+fn save(canvas: *Canvas, screen_width: c_int, screen_height: c_int) void {
     const target = raylib.LoadRenderTexture(screen_width, screen_height);
     defer raylib.UnloadTexture(target.texture);
 
     raylib.BeginTextureMode(target);
 
-    var iter_canvas = canvas.keyIterator();
+    var iter_canvas = canvas.iterator();
     while (iter_canvas.next()) |pixel| {
         // zig fmt: off
         raylib.DrawRectangleRec(
             raylib.Rectangle{
-                .x = @floatFromInt(pixel.x),
-                .y = @floatFromInt(pixel.y),
-                .width = @floatFromInt(brush_size),
-                .height = @floatFromInt(brush_size)
+                .x = @floatFromInt(pixel.key_ptr.x),
+                .y = @floatFromInt(pixel.key_ptr.y),
+                .width = @floatFromInt(pixel.value_ptr.brush_size),
+                .height = @floatFromInt(pixel.value_ptr.brush_size)
             },
-            raylib.DARKGRAY
+            pixel.value_ptr.color
         );
     }
 
