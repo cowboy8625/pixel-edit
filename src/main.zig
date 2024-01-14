@@ -7,7 +7,6 @@ const gui = @import("gui/mod.zig");
 const ArrayVec = std.ArrayList(ray.Vector2);
 const Canvas = std.AutoHashMap(struct { x: c_int, y: c_int }, struct { color: ray.Color });
 const PixelBuffer = std.AutoHashMap(struct { x: c_int, y: c_int }, void);
-const ByteArray = std.ArrayList(u8);
 
 const Mode = enum {
     Draw,
@@ -28,6 +27,31 @@ const AppContext = struct {
     last_pixel: struct { x: c_int, y: c_int } = .{ .x = 0, .y = 0 },
 };
 
+const Textures = struct {
+    const Self = @This();
+
+    save_texture: ray.Texture2D,
+    eraser_texture: ray.Texture2D,
+    pencil_texture: ray.Texture2D,
+    bucket_texture: ray.Texture2D,
+
+    pub fn init() Self {
+        return Self{
+            .save_texture = ray.LoadTexture("save_icon.png"),
+            .eraser_texture = ray.LoadTexture("eraser_icon.png"),
+            .pencil_texture = ray.LoadTexture("pencil_icon.png"),
+            .bucket_texture = ray.LoadTexture("bucket_icon.png"),
+        };
+    }
+
+    pub fn deinit(self: Self) void {
+        ray.UnloadTexture(self.save_texture);
+        ray.UnloadTexture(self.eraser_texture);
+        ray.UnloadTexture(self.pencil_texture);
+        ray.UnloadTexture(self.bucket_texture);
+    }
+};
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
@@ -43,52 +67,54 @@ pub fn main() !void {
     var ctx = AppContext{};
 
     // Initialize ray
+    ray.SetConfigFlags(ray.FLAG_WINDOW_RESIZABLE);
     ray.InitWindow(0, 0, "pixel edit");
     defer ray.CloseWindow();
     ray.HideCursor();
-    // const monitor = ray.GetCurrentMonitor();
-    // const screen_width = ray.GetMonitorWidth(monitor);
-    // const screen_height = ray.GetMonitorHeight(monitor);
+    const monitor = ray.GetCurrentMonitor();
+    const screen_width = ray.GetMonitorWidth(monitor);
+    const screen_height = ray.GetMonitorHeight(monitor);
+    ray.SetWindowMinSize(400, 400);
+    ray.SetWindowMaxSize(screen_width, screen_height);
 
-    const save_texture = ray.LoadTexture("save_icon.png");
-    defer ray.UnloadTexture(save_texture);
+    // Canvas Texture
+    const canvasTexture = ray.LoadRenderTexture(ctx.canvas_width * ctx.zoom_level, ctx.canvas_height * ctx.zoom_level);
+    defer ray.UnloadTexture(canvasTexture.texture);
+
+    // Preview Texture
+    const previewTexture = ray.LoadRenderTexture(ctx.canvas_width * ctx.zoom_level, ctx.canvas_height * ctx.zoom_level);
+    defer ray.UnloadTexture(previewTexture.texture);
+
+    const textures = Textures.init();
+    defer textures.deinit();
 
     // Initialize GUI
     var button_y: f32 = 0;
     var button_save = gui.Button{
         .text = "Save",
         .position = .{ .x = 0, .y = button_y },
-        .texture = save_texture,
+        .texture = textures.save_texture,
     };
     button_y += button_save.height();
-
-    const eraser_texture = ray.LoadTexture("eraser_icon.png");
-    defer ray.UnloadTexture(eraser_texture);
 
     var button_eraser = gui.Button{
         .text = "Eraser",
         .position = .{ .x = 0, .y = button_y },
-        .texture = eraser_texture,
+        .texture = textures.eraser_texture,
     };
     button_y += button_eraser.height();
-
-    const pencil_texture = ray.LoadTexture("pencil_icon.png");
-    defer ray.UnloadTexture(pencil_texture);
 
     var button_pencil = gui.Button{
         .text = "Pencil",
         .position = .{ .x = 0, .y = button_y },
-        .texture = pencil_texture,
+        .texture = textures.pencil_texture,
     };
     button_y += button_pencil.height();
-
-    const bucket_texture = ray.LoadTexture("bucket_icon.png");
-    defer ray.UnloadTexture(bucket_texture);
 
     var button_bucket = gui.Button{
         .text = "Fill",
         .position = .{ .x = 0, .y = button_y },
-        .texture = bucket_texture,
+        .texture = textures.bucket_texture,
     };
     button_y += button_bucket.height();
 
@@ -106,7 +132,7 @@ pub fn main() !void {
 
     ray.SetTargetFPS(60);
     while (!ray.WindowShouldClose()) {
-        const is_mouse_on_canvas = mouse_is_in_canvas(canvas_x, canvas_y, ctx.canvas_width * ctx.zoom_level, ctx.canvas_height * ctx.zoom_level);
+        const is_mouse_on_canvas = mouseIsInCanvas(canvas_x, canvas_y, ctx.canvas_width * ctx.zoom_level, ctx.canvas_height * ctx.zoom_level);
         // Update
         //----------------------------------------------------------------------------------
 
@@ -133,7 +159,7 @@ pub fn main() !void {
             const grid_y = pos.y - canvas_y;
             const x = @divTrunc(grid_x, ctx.zoom_level);
             const y = @divTrunc(grid_y, ctx.zoom_level);
-            try bresenham_line(ctx.last_pixel.x, ctx.last_pixel.y, x, y, &pixel_buffer);
+            try bresenhamLine(ctx.last_pixel.x, ctx.last_pixel.y, x, y, &pixel_buffer);
             ctx.mode = Mode.DrawLine;
         }
 
@@ -177,7 +203,7 @@ pub fn main() !void {
         }
 
         if (button_save.update()) {
-            save(&canvas, ctx.canvas_width, ctx.canvas_height);
+            saveCanvasToPng(&canvas, ctx.canvas_width, ctx.canvas_height);
         }
 
         if (button_eraser.update()) {
@@ -204,73 +230,12 @@ pub fn main() !void {
         //----------------------------------------------------------------------------------
         ray.BeginDrawing();
         ray.ClearBackground(ray.Color{ .r = 140, .g = 140, .b = 140, .a = 255 });
-        // Canva Background
-        // zig fmt: off
-        ray.DrawRectangle(
-            canvas_x,
-            canvas_y,
-            ctx.canvas_width * ctx.zoom_level,
-            ctx.canvas_height * ctx.zoom_level,
-            ray.RAYWHITE
-        );
         const mouse = ray.GetMousePosition();
 
-        // Canvas
-        {
-            var iter = canvas.iterator();
-            while (iter.next()) |pixel| {
-                // zig fmt: off
-                const pos = fix_point_to_grid(
-                    c_int,
-                    ctx.zoom_level,
-                    .{
-                        .x = @as(f32, @floatFromInt(pixel.key_ptr.x * ctx.zoom_level)),
-                        .y = @as(f32, @floatFromInt(pixel.key_ptr.y * ctx.zoom_level)),
-                    }
-                );
-                // zig fmt: off
-                ray.DrawRectangleV(
-                    .{
-                        .x = @as(f32, @floatFromInt(pos.x + canvas_x)),
-                        .y = @as(f32, @floatFromInt(pos.y + canvas_y))
-                    },
-                    .{
-                        .x = @as(f32, @floatFromInt(ctx.zoom_level)),
-                        .y = @as(f32, @floatFromInt(ctx.zoom_level))
-                    },
-                    pixel.value_ptr.color
-                );
-            }
-        }
-
-        {
-            var iter = pixel_buffer.iterator();
-            while (iter.next()) |pixel| {
-                // zig fmt: off
-                const pos = fix_point_to_grid(
-                    c_int,
-                    ctx.zoom_level,
-                    .{
-                        .x = @as(f32, @floatFromInt(pixel.key_ptr.x * ctx.zoom_level)),
-                        .y = @as(f32, @floatFromInt(pixel.key_ptr.y * ctx.zoom_level)),
-                    }
-                );
-                // zig fmt: off
-                ray.DrawRectangleV(
-                    .{
-                        .x = @as(f32, @floatFromInt(pos.x + canvas_x)),
-                        .y = @as(f32, @floatFromInt(pos.y + canvas_y))
-                    },
-                    .{
-                        .x = @as(f32, @floatFromInt(ctx.zoom_level)),
-                        .y = @as(f32, @floatFromInt(ctx.zoom_level))
-                    },
-                    ctx.color
-                );
-            }
-            pixel_buffer.clearRetainingCapacity();
-        }
-
+        updateCanvasTexture(canvasTexture, &canvas, ctx.zoom_level);
+        drawCanvasTexture(&canvasTexture.texture, canvas_x, canvas_y);
+        updatePreviewTexture(previewTexture, &pixel_buffer, ctx.zoom_level, ctx.color);
+        drawCanvasTexture(&previewTexture.texture, canvas_x, canvas_y);
         // GUI
         button_save.draw();
         button_eraser.draw();
@@ -279,28 +244,104 @@ pub fn main() !void {
         color_pallet.draw();
 
         // Brush
-        const pos = fix_point_to_grid(c_int, ctx.zoom_level, mouse);
-        const color = if (ctx.mode == Mode.Draw) ctx.color else ctx.erase_color;
-        if (is_mouse_on_canvas) {
-            ray.HideCursor();
-            ray.DrawRectangle(pos.x, pos.y, ctx.zoom_level, ctx.zoom_level, color);
-            const texture = switch (ctx.mode) {
-                Mode.Erase => eraser_texture,
-                Mode.Fill => bucket_texture,
-                else => pencil_texture,
-            };
-            const x: c_int = @intFromFloat(mouse.x);
-            const y: c_int = @as(c_int, @intFromFloat(mouse.y)) - texture.height;
-            ray.DrawTexture(texture, x, y, ray.WHITE);
-        } else {
-            ray.ShowCursor();
-        }
-
+        drawBrush(&ctx, mouse, is_mouse_on_canvas, &textures);
 
         ray.EndDrawing();
         //----------------------------------------------------------------------------------
     }
     ray.ShowCursor();
+}
+
+fn updateCanvasTexture(target: ray.RenderTexture2D, canvas: *Canvas, zoom_level: c_int) void {
+    ray.BeginTextureMode(target);
+    ray.ClearBackground(ray.RAYWHITE);
+    var iter = canvas.iterator();
+    const zoom: f32 = @floatFromInt(zoom_level);
+    while (iter.next()) |pixel| {
+        // zig fmt: off
+        const pos = fix_point_to_grid(
+            c_int,
+            zoom_level,
+            .{
+                .x = @as(f32, @floatFromInt(pixel.key_ptr.x * zoom_level)),
+                .y = @as(f32, @floatFromInt(pixel.key_ptr.y * zoom_level)),
+            }
+        );
+        const x: f32 = @floatFromInt(pos.x);
+        const y: f32 = @floatFromInt(pos.y);
+        const color = pixel.value_ptr.color;
+        ray.DrawRectangleV(.{ .x = x, .y = y }, .{ .x = zoom, .y = zoom }, color);
+    }
+    ray.EndTextureMode();
+}
+
+fn drawCanvasTexture(
+        target: *const ray.Texture2D,
+        x_int: c_int,
+        y_int: c_int,
+    ) void {
+    const width: f32 = @floatFromInt(target.width);
+    const height: f32 = @floatFromInt(target.height);
+    const rect = ray.Rectangle{
+        .x = 0,
+        .y = 0,
+        .width = width,
+        .height = -height,
+    };
+    const x: f32 = @floatFromInt(x_int);
+    const y: f32 = @floatFromInt(y_int);
+    const origin = ray.Vector2{ .x = x, .y = y };
+    ray.DrawTextureRec(target.*, rect, origin, ray.WHITE);
+}
+
+// Function is very similar to updateCanvasTexture but it canvas is a PixelBuffer
+// witch does have any value so its basicly a Set and the PixelBuffer is cleared
+// after drawing
+fn updatePreviewTexture(
+        target: ray.RenderTexture2D,
+        canvas: *PixelBuffer,
+        zoom_level: c_int,
+        current_color: ray.Color,
+    ) void {
+    ray.BeginTextureMode(target);
+    ray.ClearBackground(ray.Color{ .r = 0, .g = 0, .b = 0, .a = 0 });
+    var iter = canvas.iterator();
+    const zoom: f32 = @floatFromInt(zoom_level);
+    while (iter.next()) |pixel| {
+        const pos = fix_point_to_grid(
+            c_int,
+            zoom_level,
+            .{
+                .x = @as(f32, @floatFromInt(pixel.key_ptr.x * zoom_level)),
+                .y = @as(f32, @floatFromInt(pixel.key_ptr.y * zoom_level)),
+            }
+        );
+        // zig fmt: off
+        const x: f32 = @floatFromInt(pos.x);
+        const y: f32 = @floatFromInt(pos.y);
+        ray.DrawRectangleV(.{ .x = x, .y = y }, .{ .x = zoom, .y = zoom }, current_color);
+    }
+    ray.EndTextureMode();
+    canvas.*.clearRetainingCapacity();
+}
+
+fn drawBrush(ctx: *const AppContext, mouse: ray.Vector2, is_mouse_on_canvas: bool, textures: *const Textures) void {
+    const pos = fix_point_to_grid(c_int, ctx.zoom_level, mouse);
+    const color = if (ctx.mode == Mode.Draw) ctx.color else ctx.erase_color;
+    if (is_mouse_on_canvas) {
+        ray.HideCursor();
+        ray.DrawRectangle(pos.x, pos.y, ctx.zoom_level, ctx.zoom_level, color);
+        const texture = switch (ctx.mode) {
+            Mode.Erase => textures.eraser_texture,
+            Mode.Fill => textures.bucket_texture,
+            else => textures.pencil_texture,
+        };
+        const x: c_int = @intFromFloat(mouse.x);
+        const y: c_int = @as(c_int, @intFromFloat(mouse.y)) - texture.height;
+        ray.DrawTexture(texture, x, y, ray.WHITE);
+    } else {
+        ray.ShowCursor();
+    }
 }
 
 fn fix_point_to_grid(comptime T: type, zoom_level: c_int, pos: ray.Vector2) struct { x: T, y: T } {
@@ -319,12 +360,16 @@ fn asF32(x: c_int) f32 {
     return @as(f32, @floatFromInt(x));
 }
 
-fn mouse_is_in_canvas(left: c_int, top: c_int, width: c_int, height: c_int) bool {
+fn mouseIsInCanvas(left: c_int, top: c_int, width: c_int, height: c_int) bool {
     const pos = ray.GetMousePosition();
     return ray.CheckCollisionPointRec(pos, ray.Rectangle{ .x = asF32(left), .y = asF32(top), .width = asF32(width), .height = asF32(height) });
 }
 
-fn save(canvas: *Canvas, screen_width: c_int, screen_height: c_int) void {
+fn saveCanvasToPng(
+        canvas: *Canvas,
+        screen_width: c_int,
+        screen_height: c_int
+    ) void {
     const target = ray.LoadRenderTexture(screen_width, screen_height);
     defer ray.UnloadTexture(target.texture);
 
@@ -346,9 +391,9 @@ fn save(canvas: *Canvas, screen_width: c_int, screen_height: c_int) void {
     _ = ray.ExportImage(image, "red.png");
 }
 
-fn bresenham_line(xx1: c_int, yy1: c_int, x2: c_int, y2: c_int, out: *PixelBuffer) !void {
-    var x1 = xx1;
-    var y1 = yy1;
+fn bresenhamLine(xx1: c_int, yy1: c_int, x2: c_int, y2: c_int, out: *PixelBuffer) !void {
+    var x1: c_int = xx1;
+    var y1: c_int = yy1;
     const dx: c_int = @intCast(@abs(x2 - x1));
     const dy: c_int = @intCast(@abs(y2 - y1));
 
