@@ -2,7 +2,7 @@ const std = @import("std");
 const print = std.debug.print;
 const ray = @cImport(@cInclude("raylib.h"));
 const raygui = @cImport(@cInclude("raygui.h"));
-const gui = @import("gui/button.zig");
+const gui = @import("gui/mod.zig");
 
 const ArrayVec = std.ArrayList(ray.Vector2);
 const Canvas = std.AutoHashMap(struct { x: c_int, y: c_int }, struct { color: ray.Color });
@@ -56,7 +56,7 @@ pub fn main() !void {
     // Initialize GUI
     var button_y: f32 = 0;
     var button_save = gui.Button{
-        .text = "",
+        .text = "Save",
         .position = .{ .x = 0, .y = button_y },
         .texture = save_texture,
     };
@@ -92,12 +92,21 @@ pub fn main() !void {
     };
     button_y += button_bucket.height();
 
+    const colors = [_]ray.Color{ ray.RED, ray.GREEN, ray.BLUE, ray.DARKBLUE, ray.MAGENTA, ray.YELLOW };
+    var color_pallet = gui.ColorPallet{
+        .position = .{ .x = 0, .y = button_y },
+        .colors = try allocator.dupe(ray.Color, &colors),
+    };
+    defer allocator.free(color_pallet.colors);
+    button_y += color_pallet.height();
+
     const gui_max_width = @as(c_int, @intFromFloat(button_save.width()));
     const canvas_x = (ctx.zoom_level - @mod(gui_max_width, ctx.zoom_level)) + gui_max_width;
     const canvas_y = ctx.zoom_level * 2;
 
     ray.SetTargetFPS(60);
     while (!ray.WindowShouldClose()) {
+        const is_mouse_on_canvas = mouse_is_in_canvas(canvas_x, canvas_y, ctx.canvas_width * ctx.zoom_level, ctx.canvas_height * ctx.zoom_level);
         // Update
         //----------------------------------------------------------------------------------
 
@@ -118,7 +127,7 @@ pub fn main() !void {
             ctx.brush_size -= 1;
         }
 
-        if (is_ctrl_pressed) {
+        if (ray.IsKeyDown(ray.KEY_LEFT_SHIFT) and is_mouse_on_canvas) {
             const pos = fix_point_to_grid(c_int, ctx.zoom_level, ray.GetMousePosition());
             const grid_x = pos.x - canvas_x;
             const grid_y = pos.y - canvas_y;
@@ -136,7 +145,7 @@ pub fn main() !void {
             ctx.is_drawing = false;
         }
 
-        if (ctx.is_drawing and mouse_is_in_canvas(canvas_x, canvas_y, ctx.canvas_width * ctx.zoom_level, ctx.canvas_height * ctx.zoom_level)) {
+        if (ctx.is_drawing and is_mouse_on_canvas) {
             const pos = fix_point_to_grid(c_int, ctx.zoom_level, ray.GetMousePosition());
             const grid_x = pos.x - canvas_x;
             const grid_y = pos.y - canvas_y;
@@ -183,14 +192,27 @@ pub fn main() !void {
             ctx.mode = Mode.Fill;
         }
 
+        // color pallet
+        if (color_pallet.update()) |index| {
+            print("color index: {}\n", .{index});
+            ctx.color = color_pallet.colors[index];
+        }
+
         //----------------------------------------------------------------------------------
 
         // Draw
         //----------------------------------------------------------------------------------
         ray.BeginDrawing();
-        ray.ClearBackground(ray.RAYWHITE);
+        ray.ClearBackground(ray.Color{ .r = 140, .g = 140, .b = 140, .a = 255 });
         // Canva Background
-        ray.DrawRectangle(canvas_x, canvas_y, ctx.canvas_width * ctx.zoom_level, ctx.canvas_height * ctx.zoom_level, ray.BLUE);
+        // zig fmt: off
+        ray.DrawRectangle(
+            canvas_x,
+            canvas_y,
+            ctx.canvas_width * ctx.zoom_level,
+            ctx.canvas_height * ctx.zoom_level,
+            ray.RAYWHITE
+        );
         const mouse = ray.GetMousePosition();
 
         // Canvas
@@ -249,25 +271,29 @@ pub fn main() !void {
             pixel_buffer.clearRetainingCapacity();
         }
 
-        // Brush
-        const pos = fix_point_to_grid(c_int, ctx.zoom_level, mouse);
-        const color = if (ctx.mode == Mode.Draw) ctx.color else ctx.erase_color;
-        ray.DrawRectangle(pos.x, pos.y, ctx.zoom_level, ctx.zoom_level, color);
-
         // GUI
         button_save.draw();
         button_eraser.draw();
         button_pencil.draw();
         button_bucket.draw();
-        // Mouse
-        {
+        color_pallet.draw();
+
+        // Brush
+        const pos = fix_point_to_grid(c_int, ctx.zoom_level, mouse);
+        const color = if (ctx.mode == Mode.Draw) ctx.color else ctx.erase_color;
+        if (is_mouse_on_canvas) {
+            ray.HideCursor();
+            ray.DrawRectangle(pos.x, pos.y, ctx.zoom_level, ctx.zoom_level, color);
             const texture = switch (ctx.mode) {
                 Mode.Erase => eraser_texture,
+                Mode.Fill => bucket_texture,
                 else => pencil_texture,
             };
             const x: c_int = @intFromFloat(mouse.x);
             const y: c_int = @as(c_int, @intFromFloat(mouse.y)) - texture.height;
             ray.DrawTexture(texture, x, y, ray.WHITE);
+        } else {
+            ray.ShowCursor();
         }
 
 
