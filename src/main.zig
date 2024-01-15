@@ -28,8 +28,8 @@ const AppContext = struct {
     is_drawing: bool = false,
     mode: Mode = Mode.Draw,
     zoom_level: c_int = 10,
-    canvas_width: c_int = 64,
-    canvas_height: c_int = 64,
+    canvas_width: c_int = 60,
+    canvas_height: c_int = 20,
     last_pixel: Pixel = .{ .x = 0, .y = 0 },
 };
 
@@ -125,11 +125,8 @@ pub fn main() !void {
     button_y += button_bucket.height();
 
     const colors = [_]ray.Color{ ray.RED, ray.GREEN, ray.BLUE, ray.DARKBLUE, ray.MAGENTA, ray.YELLOW, ray.WHITE, ray.GRAY, ray.BLACK, ray.DARKGRAY };
-    var color_pallet = gui.ColorPallet{
-        .position = .{ .x = 0, .y = button_y },
-        .colors = try allocator.dupe(ray.Color, &colors),
-    };
-    defer allocator.free(color_pallet.colors);
+    var color_pallet = try gui.ColorPallet.init(allocator, .{ .x = 0, .y = button_y }, &colors);
+    defer color_pallet.deinit();
     button_y += color_pallet.height();
 
     const gui_max_width = @as(c_int, @intFromFloat(button_save.width()));
@@ -225,8 +222,12 @@ pub fn main() !void {
         }
 
         // color pallet
-        if (color_pallet.update()) |index| {
-            ctx.color = color_pallet.colors[index];
+        if (try color_pallet.update()) |index| {
+            const r = color_pallet.colors.items[index].r;
+            const g = color_pallet.colors.items[index].g;
+            const b = color_pallet.colors.items[index].b;
+            const a = color_pallet.colors.items[index].a;
+            ctx.color = ray.Color{ .r = r, .g = g, .b = b, .a = a };
         }
 
         //----------------------------------------------------------------------------------
