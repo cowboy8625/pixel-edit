@@ -1,18 +1,24 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
 const print = std.debug.print;
 const ray = @cImport(@cInclude("raylib.h"));
 const raygui = @cImport(@cInclude("raygui.h"));
 const gui = @import("gui/mod.zig");
 
 const ArrayVec = std.ArrayList(ray.Vector2);
-const Canvas = std.AutoHashMap(struct { x: c_int, y: c_int }, struct { color: ray.Color });
-const PixelBuffer = std.AutoHashMap(struct { x: c_int, y: c_int }, void);
+const Canvas = std.AutoHashMap(Pixel, struct { color: ray.Color });
+const PixelBuffer = std.AutoHashMap(Pixel, void);
 
 const Mode = enum {
     Draw,
     DrawLine,
     Erase,
     Fill,
+};
+
+const Pixel = struct {
+    x: c_int,
+    y: c_int,
 };
 
 const AppContext = struct {
@@ -24,7 +30,7 @@ const AppContext = struct {
     zoom_level: c_int = 10,
     canvas_width: c_int = 64,
     canvas_height: c_int = 64,
-    last_pixel: struct { x: c_int, y: c_int } = .{ .x = 0, .y = 0 },
+    last_pixel: Pixel = .{ .x = 0, .y = 0 },
 };
 
 const Textures = struct {
@@ -118,7 +124,7 @@ pub fn main() !void {
     };
     button_y += button_bucket.height();
 
-    const colors = [_]ray.Color{ ray.RED, ray.GREEN, ray.BLUE, ray.DARKBLUE, ray.MAGENTA, ray.YELLOW };
+    const colors = [_]ray.Color{ ray.RED, ray.GREEN, ray.BLUE, ray.DARKBLUE, ray.MAGENTA, ray.YELLOW, ray.WHITE, ray.GRAY, ray.BLACK, ray.DARKGRAY };
     var color_pallet = gui.ColorPallet{
         .position = .{ .x = 0, .y = button_y },
         .colors = try allocator.dupe(ray.Color, &colors),
@@ -198,7 +204,7 @@ pub fn main() !void {
                 Mode.Erase => {
                     _ = canvas.remove(.{ .x = x, .y = y });
                 },
-                Mode.Fill => {},
+                Mode.Fill => try fillTool(allocator, &canvas, &ctx, x, y),
             }
         }
 
@@ -220,7 +226,6 @@ pub fn main() !void {
 
         // color pallet
         if (color_pallet.update()) |index| {
-            print("color index: {}\n", .{index});
             ctx.color = color_pallet.colors[index];
         }
 
@@ -344,7 +349,7 @@ fn drawBrush(ctx: *const AppContext, mouse: ray.Vector2, is_mouse_on_canvas: boo
     }
 }
 
-fn fix_point_to_grid(comptime T: type, zoom_level: c_int, pos: ray.Vector2) struct { x: T, y: T } {
+fn fix_point_to_grid(comptime T: type, zoom_level: c_int, pos: ray.Vector2) Pixel {
     const zoom = @as(f32, @floatFromInt(zoom_level));
     if (@typeInfo(T) == .Int) {
         const x = @as(T, @intFromFloat(@divFloor(pos.x, zoom) * zoom));
@@ -419,4 +424,46 @@ fn bresenhamLine(xx1: c_int, yy1: c_int, x2: c_int, y2: c_int, out: *PixelBuffer
             y1 += sy;
         }
     }
+}
+
+fn fillTool(alloc: Allocator, canvas: *Canvas, ctx: *AppContext, x: c_int, y: c_int) !void {
+
+    var stack = std.ArrayList(Pixel).init(alloc);
+    defer stack.deinit();
+
+    // This is getting mutated some how??
+    // HOOOOOOOWWWWWWWWWW??????????????
+    const target_color =
+        if (canvas.get(.{ .x = x, .y = y })) |value| value.color
+        else ray.BLANK;
+    // print("target: {}, {} == {}\n", .{x, y, target_color});
+    const replacement_color = ctx.color;
+    try stack.append(.{ .x = x, .y = y });
+
+    while (stack.items.len > 0) {
+        const pixel = stack.pop();
+        const current_color =
+            if (canvas.get(.{ .x = pixel.x, .y = pixel.y })) |value| value.color else ray.BLANK;
+
+        // print("{}, {}, {} == {}\n", .{pixel.x, pixel.y, current_color, target_color});
+
+        if ((0 <= pixel.x and pixel.x < ctx.canvas_width) and
+            (0 <= pixel.y and pixel.y < ctx.canvas_height) and
+            compareColors(current_color, target_color))
+        {
+            // print("{}, {} -- {}\n", .{pixel.x, pixel.y, replacement_color});
+            try canvas.put(.{ .x = pixel.x, .y = pixel.y }, .{ .color = replacement_color });
+            try stack.append(.{ .x = pixel.x + 1, .y = pixel.y    });
+            try stack.append(.{ .x = pixel.x - 1, .y = pixel.y    });
+            try stack.append(.{ .x = pixel.x    , .y = pixel.y + 1});
+            try stack.append(.{ .x = pixel.x    , .y = pixel.y - 1});
+        }
+    }
+
+    ctx.mode = Mode.Draw;
+}
+
+
+fn compareColors(c1: ray.Color, c2: ray.Color) bool {
+    return c1.r == c2.r and c1.g == c2.g and c1.b == c2.b and c1.a == c2.a;
 }

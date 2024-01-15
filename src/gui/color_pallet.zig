@@ -34,9 +34,15 @@ pub const ColorPallet = struct {
                 .width = @as(f32, @floatFromInt(self.cell_size)),
                 .height = @as(f32, @floatFromInt(self.cell_size)),
             };
-            const is_mouse_down = ray.IsMouseButtonPressed(ray.MOUSE_LEFT_BUTTON);
+            const is_left_mouse_down = ray.IsMouseButtonPressed(ray.MOUSE_LEFT_BUTTON);
+            const is_right_mouse_down = ray.IsMouseButtonPressed(ray.MOUSE_RIGHT_BUTTON);
             const is_collision = ray.CheckCollisionPointRec(mouse, bounding_box);
-            if (is_mouse_down and is_collision) {
+            if (is_right_mouse_down and is_collision) {
+                std.debug.print("Right click\n", .{});
+                colorPicker(100, 100);
+                return null;
+            }
+            if (is_left_mouse_down and is_collision) {
                 return i;
             }
             y += @intFromBool(i % w >= w - 1);
@@ -63,3 +69,47 @@ pub const ColorPallet = struct {
         }
     }
 };
+
+
+fn colorPicker(x: c_int, y: c_int) void {
+    const size = 200;
+    var bounding_box = ray.Rectangle{
+        .x = @floatFromInt(x),
+        .y = @floatFromInt(y),
+        .width = size,
+        .height = size,
+    };
+
+    const header_bar = ray.Rectangle{
+        .x = @floatFromInt(x),
+        .y = @floatFromInt(y),
+        .width = size,
+        .height = 20,
+    };
+    var first = false;
+
+    while (true) {
+        const mouse = ray.GetMousePosition();
+        const is_left_mouse_down = ray.IsMouseButtonPressed(ray.MOUSE_LEFT_BUTTON);
+        const is_right_mouse_down = ray.IsMouseButtonPressed(ray.MOUSE_RIGHT_BUTTON);
+        const is_collision = ray.CheckCollisionPointRec(mouse, bounding_box);
+        if ((is_right_mouse_down or is_left_mouse_down) and !is_collision and first) {
+            std.debug.print("breaking\n", .{});
+            break;
+        }
+
+        if (ray.CheckCollisionPointRec(mouse, header_bar) and is_left_mouse_down) {
+            bounding_box.x = mouse.x;
+            bounding_box.y = mouse.y;
+        }
+        // -----------Draw-------------
+        ray.BeginDrawing();
+        ray.DrawRectangleRec(bounding_box, ray.RED);
+        ray.DrawRectangleRec(header_bar, ray.GREEN);
+        ray.DrawText("Color Picker", x, y, 20, ray.WHITE);
+        ray.EndDrawing();
+        // -----------------------------
+        first = true;
+    }
+
+}
