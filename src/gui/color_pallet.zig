@@ -204,6 +204,7 @@ fn colorPicker(x: c_int, y: c_int) ?ray.Color {
     var selected_color: ?usize = null;
     const size = 200;
     const cell_size: c_int = 20;
+    const cell_width_count: c_int = 10;
     const bounding_box = ray.Rectangle{
         .x = @floatFromInt(x),
         .y = @floatFromInt(y),
@@ -257,10 +258,9 @@ fn colorPicker(x: c_int, y: c_int) ?ray.Color {
         {
             const pos_x = @as(c_int, @intFromFloat(bounding_box.x));
             const pos_y = @as(c_int, @intFromFloat(bounding_box.y + header_bar.height));
-            const w: c_int = 10;
             var yy: c_int = 0;
             for (0..colors.len) |i| {
-                const xx = @as(c_int, @intCast(@mod(i, w)));
+                const xx = @as(c_int, @intCast(@mod(i, cell_width_count)));
                 // zig fmt: off
                 const color_box = ray.Rectangle{
                     .x = @as(f32, @floatFromInt(pos_x + xx * cell_size)),
@@ -272,7 +272,7 @@ fn colorPicker(x: c_int, y: c_int) ?ray.Color {
                 if (is_left_mouse_down and is_in_color_box) {
                     selected_color = i;
                 }
-                yy += @intFromBool(i % w >= w - 1);
+                yy += @intFromBool(i % cell_width_count >= cell_width_count - 1);
             }
         }
 
@@ -291,9 +291,17 @@ fn colorPicker(x: c_int, y: c_int) ?ray.Color {
         ray.DrawRectangleRec(bounding_box, ray.LIGHTGRAY);
         ray.DrawRectangleRec(header_bar, ray.DARKGRAY);
         ray.DrawText("Color Picker", x + 40, y, cell_size, ray.WHITE);
-
-
         drawColorPallet(x, y + 20, cell_size, &colors);
+        if (selected_color) |index| {
+            const i: c_int = @intCast(index);
+            const bound_x: c_int = @intFromFloat(bounding_box.x);
+            const bound_y: c_int = @intFromFloat(bounding_box.y);
+            const y_: c_int = (@divTrunc(i, cell_width_count) + 1) * cell_size + bound_y;
+            const x_: c_int = @mod(i, cell_width_count) * cell_size + bound_x;
+            ray.DrawRectangleLines(x_, y_, cell_size, cell_size, ray.BLACK);
+        }
+
+
         button_ok.draw();
         button_cancel.draw();
 

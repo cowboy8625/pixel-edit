@@ -28,7 +28,7 @@ const AppContext = struct {
     is_drawing: bool = false,
     mode: Mode = Mode.Draw,
     zoom_level: c_int = 10,
-    canvas_width: c_int = 60,
+    canvas_width: c_int = 20,
     canvas_height: c_int = 20,
     last_pixel: Pixel = .{ .x = 0, .y = 0 },
 };
@@ -55,6 +55,10 @@ const Textures = struct {
         ray.UnloadTexture(self.eraser_texture);
         ray.UnloadTexture(self.pencil_texture);
         ray.UnloadTexture(self.bucket_texture);
+    }
+
+    pub fn len() usize {
+        return @typeInfo(Self).Struct.fields.len;
     }
 };
 
@@ -248,6 +252,7 @@ pub fn main() !void {
         button_pencil.draw();
         button_bucket.draw();
         color_pallet.draw();
+        drawSelectedTool(ctx.mode);
 
         // Brush
         drawBrush(&ctx, mouse, is_mouse_on_canvas, &textures);
@@ -344,10 +349,28 @@ fn drawBrush(ctx: *const AppContext, mouse: ray.Vector2, is_mouse_on_canvas: boo
         };
         const x: c_int = @intFromFloat(mouse.x);
         const y: c_int = @as(c_int, @intFromFloat(mouse.y)) - texture.height;
-        ray.DrawTexture(texture, x, y, ray.WHITE);
+        ray.DrawTexture(texture, x, y, ray.BLACK);
     } else {
         ray.ShowCursor();
     }
+}
+
+fn drawSelectedTool(mode: Mode) void {
+    const step: f32 = 64;
+    const y = switch (mode) {
+        Mode.Erase => step * 1,
+        Mode.Draw => step * 2,
+        Mode.Fill => step * 3,
+        Mode.DrawLine => return,
+    };
+    const rect = ray.Rectangle{
+        .x = 0,
+        .y = y,
+        .width = step,
+        .height = step,
+
+    };
+    ray.DrawRectangleLinesEx(rect, 3, ray.BLACK);
 }
 
 fn fix_point_to_grid(comptime T: type, zoom_level: c_int, pos: ray.Vector2) Pixel {
