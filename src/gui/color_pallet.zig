@@ -230,17 +230,29 @@ fn colorPicker(x: c_int, y: c_int) ?ray.Color {
         .texture = ok_texture,
     };
 
+    const cancel_texture = ray.LoadTexture("cancel_button.png");
+    defer ray.UnloadTexture(ok_texture);
+
+    var button_cancel = button.Button {
+        .text = "OK",
+        .position = .{
+            .x = bounding_box.x + @as(f32, @floatFromInt(ok_texture.width)),
+            .y = bounding_box.y + bounding_box.height - @as(f32, @floatFromInt(ok_texture.height))
+        },
+        .texture = cancel_texture,
+    };
+
     var first = false;
 
     while (true) {
         const mouse = ray.GetMousePosition();
         const is_left_mouse_down = ray.IsMouseButtonPressed(ray.MOUSE_LEFT_BUTTON);
-        const is_right_mouse_down = ray.IsMouseButtonPressed(ray.MOUSE_RIGHT_BUTTON);
-        const is_collision = ray.CheckCollisionPointRec(mouse, bounding_box);
-        if ((is_right_mouse_down or is_left_mouse_down) and !is_collision and first) {
-            std.debug.print("breaking\n", .{});
-            break;
-        }
+        // const is_right_mouse_down = ray.IsMouseButtonPressed(ray.MOUSE_RIGHT_BUTTON);
+        // const is_collision = ray.CheckCollisionPointRec(mouse, bounding_box);
+        // if ((is_right_mouse_down or is_left_mouse_down) and !is_collision and first) {
+        //     std.debug.print("breaking\n", .{});
+        //     break;
+        // }
 
         {
             const pos_x = @as(c_int, @intFromFloat(bounding_box.x));
@@ -269,18 +281,21 @@ fn colorPicker(x: c_int, y: c_int) ?ray.Color {
             if (selected_color) |index| {
                 return colors[index];
             }
+        }
+        if (button_cancel.update()) {
             break;
         }
 
         // -----------Draw-------------
         ray.BeginDrawing();
-        ray.DrawRectangleRec(bounding_box, ray.RED);
-        ray.DrawRectangleRec(header_bar, ray.GREEN);
-        ray.DrawText("Color Picker", x, y, cell_size, ray.WHITE);
+        ray.DrawRectangleRec(bounding_box, ray.LIGHTGRAY);
+        ray.DrawRectangleRec(header_bar, ray.DARKGRAY);
+        ray.DrawText("Color Picker", x + 40, y, cell_size, ray.WHITE);
 
 
         drawColorPallet(x, y + 20, cell_size, &colors);
         button_ok.draw();
+        button_cancel.draw();
 
 
         ray.EndDrawing();
