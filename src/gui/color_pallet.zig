@@ -219,7 +219,7 @@ fn colorPicker(x: c_int, y: c_int) ?ray.Color {
         .height = 20,
     };
 
-    const ok_texture = ray.LoadTexture("ok_button.png");
+    const ok_texture = ray.LoadTexture("assets/ok_button.png");
     defer ray.UnloadTexture(ok_texture);
 
     var button_ok = button.Button {
@@ -231,7 +231,7 @@ fn colorPicker(x: c_int, y: c_int) ?ray.Color {
         .texture = ok_texture,
     };
 
-    const cancel_texture = ray.LoadTexture("cancel_button.png");
+    const cancel_texture = ray.LoadTexture("assets/cancel_button.png");
     defer ray.UnloadTexture(ok_texture);
 
     var button_cancel = button.Button {

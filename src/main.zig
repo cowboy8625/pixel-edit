@@ -43,10 +43,10 @@ const Textures = struct {
 
     pub fn init() Self {
         return Self{
-            .save_texture = ray.LoadTexture("save_icon.png"),
-            .eraser_texture = ray.LoadTexture("eraser_icon.png"),
-            .pencil_texture = ray.LoadTexture("pencil_icon.png"),
-            .bucket_texture = ray.LoadTexture("bucket_icon.png"),
+            .save_texture = ray.LoadTexture("assets/save_icon.png"),
+            .eraser_texture = ray.LoadTexture("assets/eraser_icon.png"),
+            .pencil_texture = ray.LoadTexture("assets/pencil_icon.png"),
+            .bucket_texture = ray.LoadTexture("assets/bucket_icon.png"),
         };
     }
 
@@ -336,9 +336,14 @@ fn updatePreviewTexture(
     canvas.*.clearRetainingCapacity();
 }
 
-fn drawBrush(ctx: *const AppContext, mouse: ray.Vector2, is_mouse_on_canvas: bool, textures: *const Textures) void {
+fn drawBrush(
+        ctx: *const AppContext,
+        mouse: ray.Vector2,
+        is_mouse_on_canvas: bool,
+        textures: *const Textures
+    ) void {
     const pos = fix_point_to_grid(c_int, ctx.zoom_level, mouse);
-    const color = if (ctx.mode == Mode.Draw) ctx.color else ctx.erase_color;
+    const color = if (ctx.mode == Mode.Draw or ctx.mode == Mode.DrawLine) ctx.color else ctx.erase_color;
     if (is_mouse_on_canvas) {
         ray.HideCursor();
         ray.DrawRectangle(pos.x, pos.y, ctx.zoom_level, ctx.zoom_level, color);
@@ -359,9 +364,8 @@ fn drawSelectedTool(mode: Mode) void {
     const step: f32 = 64;
     const y = switch (mode) {
         Mode.Erase => step * 1,
-        Mode.Draw => step * 2,
+        Mode.Draw, Mode.DrawLine => step * 2,
         Mode.Fill => step * 3,
-        Mode.DrawLine => return,
     };
     const rect = ray.Rectangle{
         .x = 0,
