@@ -39,6 +39,7 @@ const Textures = struct {
     const Self = @This();
 
     pub const TextureType = enum {
+        Icon,
         File,
         Save,
         Eraser,
@@ -46,9 +47,10 @@ const Textures = struct {
         Bucket,
     };
 
-    items: [5]ray.Texture2D,
-    mod_times: [5]c_long,
-    const names: [5][]const u8 = [5][]const u8{
+    items: [6]ray.Texture2D,
+    mod_times: [6]c_long,
+    const names: [6][]const u8 = [6][]const u8{
+        "assets/icon.png",
         "assets/file_icon.png",
         "assets/save_icon.png",
         "assets/eraser_icon.png",
@@ -57,11 +59,11 @@ const Textures = struct {
     };
 
     pub fn init() Self {
-        var items = [_]ray.Texture2D{undefined} ** 5;
+        var items = [_]ray.Texture2D{undefined} ** 6;
         for (0.., &items) |i, *item| {
             item.* = ray.LoadTexture(@as([*c]u8, @constCast(Self.names[i].ptr)));
         }
-        var mod_times = [_]c_long{0} ** 5;
+        var mod_times = [_]c_long{0} ** 6;
         for (0.., &mod_times) |i, *item| {
             item.* = ray.GetFileModTime(@as([*c]u8, @constCast(Self.names[i].ptr)));
         }
@@ -79,6 +81,11 @@ const Textures = struct {
 
     pub fn get(self: *const Self, textureType: Self.TextureType) ray.Texture2D {
         return self.items[@intFromEnum(textureType)];
+    }
+
+    pub fn getAsImage(self: *const Self, textureType: Self.TextureType) ray.Image {
+        const texture = self.get(textureType);
+        return ray.LoadImageFromTexture(texture);
     }
 
     pub fn len(self: *Self) usize {
@@ -124,6 +131,12 @@ pub fn main() !void {
     const screen_height = ray.GetMonitorHeight(monitor);
     ray.SetWindowMinSize(400, 400);
     ray.SetWindowMaxSize(screen_width, screen_height);
+    var textures = Textures.init();
+    defer textures.deinit();
+
+    ray.SetWindowIcon(textures.getAsImage(.Icon));
+    ray.ToggleBorderlessWindowed();
+
     // App Texture
     const appTexture = ray.LoadRenderTexture(screen_width, screen_height);
     defer ray.UnloadTexture(appTexture.texture);
@@ -135,9 +148,6 @@ pub fn main() !void {
     // Preview Texture
     const previewTexture = ray.LoadRenderTexture(ctx.canvas_width * ctx.zoom_level, ctx.canvas_height * ctx.zoom_level);
     defer ray.UnloadTexture(previewTexture.texture);
-
-    var textures = Textures.init();
-    defer textures.deinit();
 
     // Initialize GUI
     var button_y: f32 = 0;

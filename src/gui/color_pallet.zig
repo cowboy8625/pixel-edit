@@ -8,9 +8,11 @@ pub const ColorPallet = struct {
     const Self = @This();
 
     position: ray.Vector2,
+    selected_color: struct { x: c_int, y: c_int },
     colors: std.ArrayList(ray.Color),
-    cell_size: c_int = 32,
     alloc: Allocator,
+
+    cell_size: c_int = 32,
 
     pub fn init(alloc: Allocator, position: ray.Vector2, starting_colors: []const ray.Color) !Self {
         const Colors = std.ArrayList(ray.Color);
@@ -19,8 +21,11 @@ pub const ColorPallet = struct {
         if (starting_colors.len != 0) {
             try colors.appendSlice(starting_colors);
         }
+        // TODO: This is sloppy
+        const pos = getCordsFromIndex(0, 32, 2, position);
         return Self{
             .position = position,
+            .selected_color = .{ .x = pos.x, .y = pos.y },
             .colors = colors,
             .alloc = alloc,
         };
@@ -66,6 +71,8 @@ pub const ColorPallet = struct {
                 }
             }
             if (is_left_mouse_down and is_collision) {
+                const pos = getCordsFromIndex(i, self.cell_size, w, self.position);
+                self.selected_color = .{ .x = pos.x, .y = pos.y };
                 return i;
             }
             y += @intFromBool(i % w >= w - 1);
@@ -90,6 +97,14 @@ pub const ColorPallet = struct {
             );
             y += @intFromBool(i % w >= w - 1);
         }
+
+        ray.DrawRectangleLines(
+            self.selected_color.x,
+            self.selected_color.y,
+            self.cell_size,
+            self.cell_size,
+            ray.BLACK
+        );
     }
 };
 
@@ -328,4 +343,16 @@ fn drawColorPallet(xx: c_int, yy: c_int, cell_size: c_int, colors: []const ray.C
         );
         y += @intFromBool(i % w >= w - 1);
     }
+}
+
+fn getCordsFromIndex(index: usize, cell_size: c_int, cell_count_width: c_int, offset: ray.Vector2) struct { x: c_int, y: c_int } {
+    const i: c_int = @intCast(index);
+    const bound_x: c_int = @intFromFloat(offset.x);
+    const bound_y: c_int = @intFromFloat(offset.y);
+    const y_: c_int = @divTrunc(i, cell_count_width) * cell_size + bound_y;
+    const x_: c_int = @mod(i, cell_count_width) * cell_size + bound_x;
+    return .{
+        .x = x_,
+        .y = y_,
+    };
 }
