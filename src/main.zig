@@ -134,8 +134,8 @@ pub fn main() !void {
     var textures = Textures.init();
     defer textures.deinit();
 
-    ray.SetWindowIcon(textures.getAsImage(.Icon));
-    ray.ToggleBorderlessWindowed();
+    // ray.SetWindowIcon(textures.getAsImage(.Icon));
+    // ray.ToggleBorderlessWindowed();
 
     // App Texture
     const appTexture = ray.LoadRenderTexture(screen_width, screen_height);

@@ -1,6 +1,6 @@
 # Pixel Edit
 
-<img src="https://github.com/cowboy8625/snow-lang/assets/43012445/52634ac4-cd34-4bda-ac6d-74de6b49ba20"/>
+<img src="https://github.com/cowboy8625/pixel-edit/assets/43012445/46d1269f-25b9-4e95-be15-dd472f30a95f"/>
 
 ### Building
 
