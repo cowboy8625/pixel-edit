@@ -186,7 +186,7 @@ pub fn main() !void {
     };
     button_y += button_bucket.height();
 
-    const colors = [_]ray.Color{ ray.RED, ray.GREEN, ray.BLUE, ray.DARKBLUE, ray.MAGENTA, ray.YELLOW, ray.WHITE, ray.GRAY, ray.BLACK, ray.DARKGRAY };
+    const colors = [_]ray.Color{ ray.BLACK, ray.DARKGRAY, ray.GRAY, ray.DARKBLUE, ray.MAGENTA, ray.YELLOW, ray.WHITE, ray.BLUE, ray.RED, ray.GREEN };
     var color_pallet = try gui.ColorPallet.init(allocator, .{ .x = 0, .y = button_y }, &colors);
     defer color_pallet.deinit();
     button_y += color_pallet.height();
