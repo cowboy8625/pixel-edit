@@ -1,9 +1,11 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const Allocator = std.mem.Allocator;
 const print = std.debug.print;
 const ray = @cImport(@cInclude("raylib.h"));
 const raygui = @cImport(@cInclude("raygui.h"));
 const gui = @import("gui/mod.zig");
+const nfd = @import("nfd");
 
 const ArrayVec = std.ArrayList(ray.Vector2);
 const Canvas = std.AutoHashMap(Pixel, struct { color: ray.Color });
@@ -28,37 +30,70 @@ const AppContext = struct {
     is_drawing: bool = false,
     mode: Mode = Mode.Draw,
     zoom_level: c_int = 10,
-    canvas_width: c_int = 20,
-    canvas_height: c_int = 20,
+    canvas_width: c_int = 64,
+    canvas_height: c_int = 64,
     last_pixel: Pixel = .{ .x = 0, .y = 0 },
 };
 
 const Textures = struct {
     const Self = @This();
 
-    save_texture: ray.Texture2D,
-    eraser_texture: ray.Texture2D,
-    pencil_texture: ray.Texture2D,
-    bucket_texture: ray.Texture2D,
+    pub const TextureType = enum {
+        File,
+        Save,
+        Eraser,
+        Pencil,
+        Bucket,
+    };
+
+    items: [5]ray.Texture2D,
+    mod_times: [5]c_long,
+    const names: [5][]const u8 = [5][]const u8{
+        "assets/file_icon.png",
+        "assets/save_icon.png",
+        "assets/eraser_icon.png",
+        "assets/pencil_icon.png",
+        "assets/bucket_icon.png",
+    };
 
     pub fn init() Self {
+        var items = [_]ray.Texture2D{undefined} ** 5;
+        for (0.., &items) |i, *item| {
+            item.* = ray.LoadTexture(@as([*c]u8, @constCast(Self.names[i].ptr)));
+        }
+        var mod_times = [_]c_long{0} ** 5;
+        for (0.., &mod_times) |i, *item| {
+            item.* = ray.GetFileModTime(@as([*c]u8, @constCast(Self.names[i].ptr)));
+        }
         return Self{
-            .save_texture = ray.LoadTexture("assets/save_icon.png"),
-            .eraser_texture = ray.LoadTexture("assets/eraser_icon.png"),
-            .pencil_texture = ray.LoadTexture("assets/pencil_icon.png"),
-            .bucket_texture = ray.LoadTexture("assets/bucket_icon.png"),
+            .items = items,
+            .mod_times = mod_times,
         };
     }
 
     pub fn deinit(self: Self) void {
-        ray.UnloadTexture(self.save_texture);
-        ray.UnloadTexture(self.eraser_texture);
-        ray.UnloadTexture(self.pencil_texture);
-        ray.UnloadTexture(self.bucket_texture);
+        for (self.items) |item| {
+            ray.UnloadTexture(item);
+        }
     }
 
-    pub fn len() usize {
-        return @typeInfo(Self).Struct.fields.len;
+    pub fn get(self: *const Self, textureType: Self.TextureType) ray.Texture2D {
+        return self.items[@intFromEnum(textureType)];
+    }
+
+    pub fn len(self: *Self) usize {
+        return self.items.len;
+    }
+
+    pub fn update(self: *Self) void {
+        for (0.., &Self.names, &self.mod_times) |i, *name, *mod_time| {
+            const c_name: [*c]u8 = @constCast(name.ptr);
+            const new_mod_time = ray.GetFileModTime(c_name);
+            if (new_mod_time > mod_time.*) {
+                ray.UnloadTexture(self.items[i]);
+                self.items[i] = ray.LoadTexture(c_name);
+            }
+        }
     }
 };
 
@@ -78,6 +113,9 @@ pub fn main() !void {
 
     // Initialize ray
     ray.SetConfigFlags(ray.FLAG_WINDOW_RESIZABLE);
+    if (builtin.mode != .Debug) {
+        ray.SetTraceLogLevel(ray.LOG_NONE);
+    }
     ray.InitWindow(0, 0, "pixel edit");
     defer ray.CloseWindow();
     ray.HideCursor();
@@ -86,6 +124,9 @@ pub fn main() !void {
     const screen_height = ray.GetMonitorHeight(monitor);
     ray.SetWindowMinSize(400, 400);
     ray.SetWindowMaxSize(screen_width, screen_height);
+    // App Texture
+    const appTexture = ray.LoadRenderTexture(screen_width, screen_height);
+    defer ray.UnloadTexture(appTexture.texture);
 
     // Canvas Texture
     const canvasTexture = ray.LoadRenderTexture(ctx.canvas_width * ctx.zoom_level, ctx.canvas_height * ctx.zoom_level);
@@ -95,36 +136,43 @@ pub fn main() !void {
     const previewTexture = ray.LoadRenderTexture(ctx.canvas_width * ctx.zoom_level, ctx.canvas_height * ctx.zoom_level);
     defer ray.UnloadTexture(previewTexture.texture);
 
-    const textures = Textures.init();
+    var textures = Textures.init();
     defer textures.deinit();
 
     // Initialize GUI
     var button_y: f32 = 0;
+    var button_open = gui.Button{
+        .text = "Open",
+        .position = .{ .x = 0, .y = button_y },
+        .texture = textures.get(.File),
+    };
+    button_y += button_open.height();
+
     var button_save = gui.Button{
         .text = "Save",
         .position = .{ .x = 0, .y = button_y },
-        .texture = textures.save_texture,
+        .texture = textures.get(.Save),
     };
     button_y += button_save.height();
 
     var button_eraser = gui.Button{
         .text = "Eraser",
         .position = .{ .x = 0, .y = button_y },
-        .texture = textures.eraser_texture,
+        .texture = textures.get(.Eraser),
     };
     button_y += button_eraser.height();
 
     var button_pencil = gui.Button{
         .text = "Pencil",
         .position = .{ .x = 0, .y = button_y },
-        .texture = textures.pencil_texture,
+        .texture = textures.get(.Pencil),
     };
     button_y += button_pencil.height();
 
     var button_bucket = gui.Button{
         .text = "Fill",
         .position = .{ .x = 0, .y = button_y },
-        .texture = textures.bucket_texture,
+        .texture = textures.get(.Bucket),
     };
     button_y += button_bucket.height();
 
@@ -209,8 +257,27 @@ pub fn main() !void {
             }
         }
 
+        if (button_open.update()) {
+            const open_path = try nfd.openDialog(allocator, null, null);
+            if (open_path) |path| {
+                const image = ray.LoadImage(@as([*c]u8, @constCast(path.ptr)));
+                defer ray.UnloadImage(image);
+                print("Loaded: {s}\n", .{path});
+                for (0..@as(usize, @intCast(image.width))) |x| {
+                    for (0..@as(usize, @intCast(image.height))) |y| {
+                        const color = ray.GetImageColor(image, @intCast(x), @intCast(y));
+                        try canvas.put(.{ .x = @intCast(x), .y = @intCast(y) }, .{ .color = color });
+                    }
+                }
+            }
+        }
+
         if (button_save.update()) {
-            saveCanvasToPng(&canvas, ctx.canvas_width, ctx.canvas_height);
+            const save_path = try nfd.saveDialog(allocator, null, null);
+            if (save_path) |path| {
+                saveCanvasToPng(path, &canvas, ctx.canvas_width, ctx.canvas_height);
+                textures.update();
+            }
         }
 
         if (button_eraser.update()) {
@@ -226,7 +293,7 @@ pub fn main() !void {
         }
 
         // color pallet
-        if (try color_pallet.update()) |index| {
+        if (try color_pallet.update(&appTexture.texture)) |index| {
             const r = color_pallet.colors.items[index].r;
             const g = color_pallet.colors.items[index].g;
             const b = color_pallet.colors.items[index].b;
@@ -238,15 +305,18 @@ pub fn main() !void {
 
         // Draw
         //----------------------------------------------------------------------------------
-        ray.BeginDrawing();
-        ray.ClearBackground(ray.Color{ .r = 140, .g = 140, .b = 140, .a = 255 });
-        const mouse = ray.GetMousePosition();
 
+        const mouse = ray.GetMousePosition();
         updateCanvasTexture(canvasTexture, &canvas, ctx.zoom_level);
-        drawCanvasTexture(&canvasTexture.texture, canvas_x, canvas_y);
         updatePreviewTexture(previewTexture, &pixel_buffer, ctx.zoom_level, ctx.color);
-        drawCanvasTexture(&previewTexture.texture, canvas_x, canvas_y);
+
+        ray.BeginTextureMode(appTexture);
+        ray.ClearBackground(ray.LIGHTGRAY);
+
+        gui.drawTexture(&canvasTexture.texture, canvas_x, canvas_y);
+        gui.drawTexture(&previewTexture.texture, canvas_x, canvas_y);
         // GUI
+        button_open.draw();
         button_save.draw();
         button_eraser.draw();
         button_pencil.draw();
@@ -256,7 +326,10 @@ pub fn main() !void {
 
         // Brush
         drawBrush(&ctx, mouse, is_mouse_on_canvas, &textures);
+        ray.EndTextureMode();
 
+        ray.BeginDrawing();
+        gui.drawTexture(&appTexture.texture, 0, 0);
         ray.EndDrawing();
         //----------------------------------------------------------------------------------
     }
@@ -284,25 +357,6 @@ fn updateCanvasTexture(target: ray.RenderTexture2D, canvas: *Canvas, zoom_level:
         ray.DrawRectangleV(.{ .x = x, .y = y }, .{ .x = zoom, .y = zoom }, color);
     }
     ray.EndTextureMode();
-}
-
-fn drawCanvasTexture(
-        target: *const ray.Texture2D,
-        x_int: c_int,
-        y_int: c_int,
-    ) void {
-    const width: f32 = @floatFromInt(target.width);
-    const height: f32 = @floatFromInt(target.height);
-    const rect = ray.Rectangle{
-        .x = 0,
-        .y = 0,
-        .width = width,
-        .height = -height,
-    };
-    const x: f32 = @floatFromInt(x_int);
-    const y: f32 = @floatFromInt(y_int);
-    const origin = ray.Vector2{ .x = x, .y = y };
-    ray.DrawTextureRec(target.*, rect, origin, ray.WHITE);
 }
 
 // Function is very similar to updateCanvasTexture but it canvas is a PixelBuffer
@@ -348,13 +402,13 @@ fn drawBrush(
         ray.HideCursor();
         ray.DrawRectangle(pos.x, pos.y, ctx.zoom_level, ctx.zoom_level, color);
         const texture = switch (ctx.mode) {
-            Mode.Erase => textures.eraser_texture,
-            Mode.Fill => textures.bucket_texture,
-            else => textures.pencil_texture,
+            Mode.Erase => textures.get(.Eraser),
+            Mode.Fill => textures.get(.Bucket),
+            else => textures.get(.Pencil),
         };
         const x: c_int = @intFromFloat(mouse.x);
         const y: c_int = @as(c_int, @intFromFloat(mouse.y)) - texture.height;
-        ray.DrawTexture(texture, x, y, ray.BLACK);
+        ray.DrawTexture(texture, x, y, ray.WHITE);
     } else {
         ray.ShowCursor();
     }
@@ -363,9 +417,9 @@ fn drawBrush(
 fn drawSelectedTool(mode: Mode) void {
     const step: f32 = 64;
     const y = switch (mode) {
-        Mode.Erase => step * 1,
-        Mode.Draw, Mode.DrawLine => step * 2,
-        Mode.Fill => step * 3,
+        Mode.Erase => step * 2,
+        Mode.Draw, Mode.DrawLine => step * 3,
+        Mode.Fill => step * 4,
     };
     const rect = ray.Rectangle{
         .x = 0,
@@ -399,6 +453,7 @@ fn mouseIsInCanvas(left: c_int, top: c_int, width: c_int, height: c_int) bool {
 }
 
 fn saveCanvasToPng(
+        save_file_path: []const u8,
         canvas: *Canvas,
         screen_width: c_int,
         screen_height: c_int
@@ -421,7 +476,8 @@ fn saveCanvasToPng(
     ray.EndTextureMode();
     var image = ray.LoadImageFromTexture(target.texture);
     ray.ImageFlipVertical(&image);
-    _ = ray.ExportImage(image, "red.png");
+    const path = @as([*c]u8, @constCast(save_file_path.ptr));
+    _ = ray.ExportImage(image, path);
 }
 
 fn bresenhamLine(xx1: c_int, yy1: c_int, x2: c_int, y2: c_int, out: *PixelBuffer) !void {
@@ -459,12 +515,9 @@ fn fillTool(alloc: Allocator, canvas: *Canvas, ctx: *AppContext, x: c_int, y: c_
     var stack = std.ArrayList(Pixel).init(alloc);
     defer stack.deinit();
 
-    // This is getting mutated some how??
-    // HOOOOOOOWWWWWWWWWW??????????????
     const target_color =
         if (canvas.get(.{ .x = x, .y = y })) |value| value.color
         else ray.BLANK;
-    // print("target: {}, {} == {}\n", .{x, y, target_color});
     const replacement_color = ctx.color;
     try stack.append(.{ .x = x, .y = y });
 
@@ -472,8 +525,6 @@ fn fillTool(alloc: Allocator, canvas: *Canvas, ctx: *AppContext, x: c_int, y: c_
         const pixel = stack.pop();
         const current_color =
             if (canvas.get(.{ .x = pixel.x, .y = pixel.y })) |value| value.color else ray.BLANK;
-
-        // print("{}, {}, {} == {}\n", .{pixel.x, pixel.y, current_color, target_color});
 
         if ((0 <= pixel.x and pixel.x < ctx.canvas_width) and
             (0 <= pixel.y and pixel.y < ctx.canvas_height) and

@@ -1,3 +1,4 @@
+const utils = @import("utils.zig");
 const std = @import("std");
 const button = @import("button.zig");
 const ray = @cImport(@cInclude("raylib.h"));
@@ -40,7 +41,7 @@ pub const ColorPallet = struct {
         return @floatFromInt(h);
     }
 
-    pub fn update(self: *Self) !?usize {
+    pub fn update(self: *Self, background: *const ray.Texture2D) !?usize {
         const mouse = ray.GetMousePosition();
         const pos_x = @as(c_int, @intFromFloat(self.position.x));
         const pos_y = @as(c_int, @intFromFloat(self.position.y));
@@ -59,13 +60,10 @@ pub const ColorPallet = struct {
             const is_right_mouse_down = ray.IsMouseButtonPressed(ray.MOUSE_RIGHT_BUTTON);
             const is_collision = ray.CheckCollisionPointRec(mouse, bounding_box);
             if (is_right_mouse_down and is_collision) {
-                std.debug.print("Right click\n", .{});
-                if (colorPicker(200, 100)) |color| {
-                    std.debug.print("color: {any}\n", .{color});
+                if (colorPicker(background, 200, 100)) |color| {
                     try self.colors.append(color);
                     return null;
                 }
-                std.debug.print("no color\n", .{});
             }
             if (is_left_mouse_down and is_collision) {
                 return i;
@@ -96,7 +94,7 @@ pub const ColorPallet = struct {
 };
 
 
-fn colorPicker(x: c_int, y: c_int) ?ray.Color {
+fn colorPicker(background: *const ray.Texture2D, x: c_int, y: c_int) ?ray.Color {
     const colors = [_]ray.Color{
         .{ .r = 200 , .g = 200  , .b = 200 , .a = 255 },
         .{ .r = 130 , .g = 130  , .b = 130 , .a = 255 },
@@ -205,16 +203,16 @@ fn colorPicker(x: c_int, y: c_int) ?ray.Color {
     const size = 200;
     const cell_size: c_int = 20;
     const cell_width_count: c_int = 10;
-    const bounding_box = ray.Rectangle{
+    var bounding_box = ray.Rectangle{
         .x = @floatFromInt(x),
         .y = @floatFromInt(y),
         .width = size,
         .height = size + 40,
     };
 
-    const header_bar = ray.Rectangle{
-        .x = @floatFromInt(x),
-        .y = @floatFromInt(y),
+    var header_bar = ray.Rectangle{
+        .x = bounding_box.x,
+        .y = bounding_box.y,
         .width = size,
         .height = 20,
     };
@@ -248,12 +246,14 @@ fn colorPicker(x: c_int, y: c_int) ?ray.Color {
     while (true) {
         const mouse = ray.GetMousePosition();
         const is_left_mouse_down = ray.IsMouseButtonPressed(ray.MOUSE_LEFT_BUTTON);
-        // const is_right_mouse_down = ray.IsMouseButtonPressed(ray.MOUSE_RIGHT_BUTTON);
-        // const is_collision = ray.CheckCollisionPointRec(mouse, bounding_box);
-        // if ((is_right_mouse_down or is_left_mouse_down) and !is_collision and first) {
-        //     std.debug.print("breaking\n", .{});
-        //     break;
-        // }
+        const is_right_mouse_down = ray.IsMouseButtonPressed(ray.MOUSE_RIGHT_BUTTON);
+        const is_collision = ray.CheckCollisionPointRec(mouse, header_bar);
+        if (is_right_mouse_down and is_collision and first) {
+            bounding_box.x = mouse.x;
+            bounding_box.y = mouse.y;
+            header_bar.x = mouse.x;
+            header_bar.y = mouse.y;
+        }
 
         {
             const pos_x = @as(c_int, @intFromFloat(bounding_box.x));
@@ -288,6 +288,7 @@ fn colorPicker(x: c_int, y: c_int) ?ray.Color {
 
         // -----------Draw-------------
         ray.BeginDrawing();
+        utils.drawTexture(background, 0, 0);
         ray.DrawRectangleRec(bounding_box, ray.LIGHTGRAY);
         ray.DrawRectangleRec(header_bar, ray.DARKGRAY);
         ray.DrawText("Color Picker", x + 40, y, cell_size, ray.WHITE);

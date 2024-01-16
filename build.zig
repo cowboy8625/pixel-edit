@@ -1,4 +1,5 @@
 const std = @import("std");
+const nfd = @import("nfd");
 
 // pub fn build(b: *std.Build) void {
 //     const targets = [_][]const u8{ "aarch64-macos", "x86_64-macos", "aarch64-linux", "x86_64-linux-gnu", "x86_64-linux-musl", "x86_64-windows" };
@@ -24,6 +25,8 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+
+    nfd.install(exe);
     exe.linkSystemLibrary("raylib");
     exe.linkSystemLibrary("c");
 
