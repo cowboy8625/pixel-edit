@@ -280,16 +280,16 @@ pub fn main() !void {
     };
     button_y += button_play.height();
 
-    var button_plus_frame = gui.Button{
-        .text = "Plus",
-        .position = .{ .x = 0, .y = button_y },
-        .texture = textures.get(.Plus),
-    };
-
     var button_minus_frame = gui.Button{
         .text = "Minus",
-        .position = .{ .x = button_plus_frame.width(), .y = button_y },
+        .position = .{ .x = 0, .y = button_y },
         .texture = textures.get(.Minus),
+    };
+
+    var button_plus_frame = gui.Button{
+        .text = "Plus",
+        .position = .{ .x = button_minus_frame.width(), .y = button_y },
+        .texture = textures.get(.Plus),
     };
 
     button_y += button_plus_frame.height();
