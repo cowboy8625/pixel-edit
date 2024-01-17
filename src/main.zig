@@ -33,19 +33,98 @@ const AppContext = struct {
     canvas_width: c_int = 64,
     canvas_height: c_int = 64,
     last_pixel: Pixel = .{ .x = 0, .y = 0 },
+    playing: bool = false,
+    canvas: CanvasManager,
+
+    const Self = @This();
+
+    pub fn init(alloc: Allocator) !Self {
+        return Self{
+            .canvas = try CanvasManager.init(alloc),
+        };
+    }
+
+    pub fn deinit(self: *Self) void {
+        self.canvas.deinit();
+    }
+};
+
+const CanvasManager = struct {
+    alloc: Allocator,
+    index: usize = 0,
+    frames: std.ArrayList(Canvas),
+    // TODO: layers will go here too
+
+    const Self = @This();
+    pub fn init(alloc: Allocator) !Self {
+        var frames = try std.ArrayList(Canvas).initCapacity(alloc, 1);
+        errdefer frames.deinit();
+        var canvas = Canvas.init(alloc);
+        errdefer canvas.deinit();
+        try frames.append(canvas);
+        return Self{
+            .alloc = alloc,
+            .frames = frames,
+        };
+    }
+
+    pub fn deinit(self: *Self) void {
+        for (self.frames.items) |*frame| {
+            frame.*.deinit();
+        }
+        self.frames.deinit();
+    }
+
+    pub fn current_frame(self: *const Self) c_int {
+        return @intCast(self.index + 1);
+    }
+
+    pub fn len(self: *const Self) c_int {
+        return @intCast(self.frames.items.len);
+    }
+
+    pub fn add_frame(self: *Self) !void {
+        try self.frames.append(Canvas.init(self.alloc));
+    }
+
+    pub fn clear(self: *Self) void {
+        self.frames.items[self.index].clearRetainingCapacity();
+    }
+
+    pub fn remove(self: *Self, pixel: Pixel) bool {
+        return self.frames.items[self.index].remove(pixel);
+    }
+
+    pub fn getCurrent(self: *Self) *Canvas {
+        return &self.frames.items[self.index];
+    }
+
+    pub fn next(self: *Self) void {
+        self.index = (self.index + 1) % self.frames.items.len;
+    }
+
+    pub fn nextOrCreate(self: *Self) !void {
+        if (self.index + 1 == self.frames.items.len) {
+            const new_frame = Canvas.init(self.alloc);
+            try self.frames.append(new_frame);
+        }
+        self.index += 1;
+    }
+
+    pub fn prev(self: *Self) void {
+        if (self.index > 0) self.index -= 1;
+    }
+
+    pub fn put(self: *Self, pixel: Pixel, color: ray.Color) !void {
+        try self.frames.items[self.index].put(pixel, .{ .color = color });
+    }
 };
 
 const Textures = struct {
     const Self = @This();
 
-    pub const TextureType = enum {
-        Icon,
-        File,
-        Save,
-        Eraser,
-        Pencil,
-        Bucket,
-    };
+    // TODO: make this generate at compile time?
+    pub const TextureType = enum { Icon, File, Save, Eraser, Pencil, Bucket, Plus, Minus, Play };
 
     names: []const []const u8,
 
@@ -110,13 +189,12 @@ pub fn main() !void {
     const allocator = gpa.allocator();
 
     // Initialize Canvas
-    var canvas = Canvas.init(allocator);
-    defer canvas.deinit();
     var pixel_buffer = PixelBuffer.init(allocator);
     defer pixel_buffer.deinit();
 
     // Initialize variables
-    var ctx = AppContext{};
+    var ctx = try AppContext.init(allocator);
+    defer ctx.deinit();
 
     // Initialize ray
     ray.SetConfigFlags(ray.FLAG_WINDOW_RESIZABLE);
@@ -137,6 +215,9 @@ pub fn main() !void {
         "assets/eraser_icon.png",
         "assets/pencil_icon.png",
         "assets/bucket_icon.png",
+        "assets/plus_icon.png",
+        "assets/minus_icon.png",
+        "assets/play_icon.png",
     });
     defer textures.deinit();
 
@@ -192,6 +273,27 @@ pub fn main() !void {
     };
     button_y += button_bucket.height();
 
+    var button_play = gui.Button{
+        .text = "Play",
+        .position = .{ .x = 0, .y = button_y },
+        .texture = textures.get(.Play),
+    };
+    button_y += button_play.height();
+
+    var button_plus_frame = gui.Button{
+        .text = "Plus",
+        .position = .{ .x = 0, .y = button_y },
+        .texture = textures.get(.Plus),
+    };
+
+    var button_minus_frame = gui.Button{
+        .text = "Minus",
+        .position = .{ .x = button_plus_frame.width(), .y = button_y },
+        .texture = textures.get(.Minus),
+    };
+
+    button_y += button_plus_frame.height();
+
     const colors = [_]ray.Color{ ray.BLACK, ray.DARKGRAY, ray.GRAY, ray.DARKBLUE, ray.MAGENTA, ray.YELLOW, ray.WHITE, ray.BLUE, ray.RED, ray.GREEN };
     var color_pallet = try gui.ColorPallet.init(allocator, .{ .x = 0, .y = button_y }, &colors);
     defer color_pallet.deinit();
@@ -213,7 +315,7 @@ pub fn main() !void {
         const is_ctrl_pressed = ray.IsKeyDown(ray.KEY_LEFT_CONTROL) or ray.IsKeyDown(ray.KEY_RIGHT_CONTROL);
 
         if (is_ctrl_pressed and ray.IsKeyReleased(ray.KEY_R)) {
-            canvas.clearRetainingCapacity();
+            ctx.canvas.clear();
         }
 
         if (is_ctrl_pressed and mouse_wheel > 0) {
@@ -251,25 +353,22 @@ pub fn main() !void {
             ctx.last_pixel = .{ .x = x, .y = y };
             switch (ctx.mode) {
                 Mode.Draw => {
-                    try canvas.put(.{
-                        .x = x,
-                        .y = y,
-                    }, .{ .color = ctx.color });
+                    try ctx.canvas.put(.{ .x = x, .y = y }, ctx.color);
                 },
                 Mode.DrawLine => {
                     var iter = pixel_buffer.iterator();
                     while (iter.next()) |pixel| {
-                        try canvas.put(.{
+                        try ctx.canvas.put(.{
                             .x = pixel.key_ptr.x,
                             .y = pixel.key_ptr.y,
-                        }, .{ .color = ctx.color });
+                        }, ctx.color);
                     }
                     ctx.mode = Mode.Draw;
                 },
                 Mode.Erase => {
-                    _ = canvas.remove(.{ .x = x, .y = y });
+                    _ = ctx.canvas.remove(.{ .x = x, .y = y });
                 },
-                Mode.Fill => try fillTool(allocator, &canvas, &ctx, x, y),
+                Mode.Fill => try fillTool(allocator, ctx.canvas.getCurrent(), &ctx, x, y),
             }
         }
 
@@ -282,7 +381,7 @@ pub fn main() !void {
                 for (0..@as(usize, @intCast(image.width))) |x| {
                     for (0..@as(usize, @intCast(image.height))) |y| {
                         const color = ray.GetImageColor(image, @intCast(x), @intCast(y));
-                        try canvas.put(.{ .x = @intCast(x), .y = @intCast(y) }, .{ .color = color });
+                        try ctx.canvas.put(.{ .x = @intCast(x), .y = @intCast(y) }, color);
                     }
                 }
             }
@@ -291,7 +390,7 @@ pub fn main() !void {
         if (button_save.update()) {
             const save_path = try nfd.saveDialog(allocator, null, null);
             if (save_path) |path| {
-                saveCanvasToPng(path, &canvas, ctx.canvas_width, ctx.canvas_height);
+                saveCanvasToPng(path, ctx.canvas.getCurrent(), ctx.canvas_width, ctx.canvas_height);
                 textures.update();
             }
         }
@@ -308,6 +407,18 @@ pub fn main() !void {
             ctx.mode = Mode.Fill;
         }
 
+        if (button_play.update()) {
+            ctx.playing = !ctx.playing;
+        }
+
+        if (button_plus_frame.update()) {
+            try ctx.canvas.nextOrCreate();
+        }
+
+        if (button_minus_frame.update()) {
+            ctx.canvas.prev();
+        }
+
         // color pallet
         if (try color_pallet.update(&appTexture.texture)) |index| {
             const r = color_pallet.colors.items[index].r;
@@ -316,6 +427,9 @@ pub fn main() !void {
             const a = color_pallet.colors.items[index].a;
             ctx.color = ray.Color{ .r = r, .g = g, .b = b, .a = a };
         }
+        if (ctx.playing) {
+            ctx.canvas.next();
+        }
 
         //----------------------------------------------------------------------------------
 
@@ -323,7 +437,7 @@ pub fn main() !void {
         //----------------------------------------------------------------------------------
 
         const mouse = ray.GetMousePosition();
-        updateCanvasTexture(canvasTexture, &canvas, ctx.zoom_level);
+        updateCanvasTexture(canvasTexture, ctx.canvas.getCurrent(), ctx.zoom_level);
         updatePreviewTexture(previewTexture, &pixel_buffer, ctx.zoom_level, ctx.color);
 
         ray.BeginTextureMode(appTexture);
@@ -337,8 +451,12 @@ pub fn main() !void {
         button_eraser.draw();
         button_pencil.draw();
         button_bucket.draw();
+        button_play.draw();
+        button_plus_frame.draw();
+        button_minus_frame.draw();
         color_pallet.draw();
         drawSelectedTool(ctx.mode);
+        ray.DrawText(ray.TextFormat("Frames: %d/%d", ctx.canvas.current_frame(), ctx.canvas.len()), 100, 0, 20, ray.BLACK);
 
         // Brush
         drawBrush(&ctx, mouse, is_mouse_on_canvas);
@@ -544,7 +662,7 @@ fn fillTool(alloc: Allocator, canvas: *Canvas, ctx: *AppContext, x: c_int, y: c_
             compareColors(current_color, target_color))
         {
             // print("{}, {} -- {}\n", .{pixel.x, pixel.y, replacement_color});
-            try canvas.put(.{ .x = pixel.x, .y = pixel.y }, .{ .color = replacement_color });
+            try ctx.canvas.put(pixel, replacement_color);
             try stack.append(.{ .x = pixel.x + 1, .y = pixel.y    });
             try stack.append(.{ .x = pixel.x - 1, .y = pixel.y    });
             try stack.append(.{ .x = pixel.x    , .y = pixel.y + 1});
