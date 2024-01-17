@@ -125,7 +125,6 @@ pub fn main() !void {
     }
     ray.InitWindow(0, 0, "pixel edit");
     defer ray.CloseWindow();
-    ray.HideCursor();
     const monitor = ray.GetCurrentMonitor();
     const screen_width = ray.GetMonitorWidth(monitor);
     const screen_height = ray.GetMonitorHeight(monitor);
@@ -335,7 +334,7 @@ pub fn main() !void {
         drawSelectedTool(ctx.mode);
 
         // Brush
-        drawBrush(&ctx, mouse, is_mouse_on_canvas, &textures);
+        drawBrush(&ctx, mouse, is_mouse_on_canvas);
         ray.EndTextureMode();
 
         ray.BeginDrawing();
@@ -404,24 +403,21 @@ fn drawBrush(
         ctx: *const AppContext,
         mouse: ray.Vector2,
         is_mouse_on_canvas: bool,
-        textures: *const Textures
     ) void {
-    const pos = fix_point_to_grid(c_int, ctx.zoom_level, mouse);
-    const color = if (ctx.mode == Mode.Draw or ctx.mode == Mode.DrawLine) ctx.color else ctx.erase_color;
-    if (is_mouse_on_canvas) {
-        ray.HideCursor();
-        ray.DrawRectangle(pos.x, pos.y, ctx.zoom_level, ctx.zoom_level, color);
-        const texture = switch (ctx.mode) {
-            Mode.Erase => textures.get(.Eraser),
-            Mode.Fill => textures.get(.Bucket),
-            else => textures.get(.Pencil),
-        };
-        const x: c_int = @intFromFloat(mouse.x);
-        const y: c_int = @as(c_int, @intFromFloat(mouse.y)) - texture.height;
-        ray.DrawTexture(texture, x, y, ray.WHITE);
-    } else {
+    if (!is_mouse_on_canvas) {
         ray.ShowCursor();
+        return;
     }
+    ray.HideCursor();
+    const pos = fix_point_to_grid(c_int, ctx.zoom_level, mouse);
+    const color = if (
+            ctx.mode == Mode.Draw or
+            ctx.mode == Mode.DrawLine or
+            ctx.mode == Mode.Fill
+        ) ctx.color
+        else ctx.erase_color;
+    ray.DrawRectangle(pos.x, pos.y, ctx.zoom_level, ctx.zoom_level, color);
+    ray.DrawRectangleLines(pos.x, pos.y, ctx.zoom_level, ctx.zoom_level, ray.WHITE);
 }
 
 fn drawSelectedTool(mode: Mode) void {
