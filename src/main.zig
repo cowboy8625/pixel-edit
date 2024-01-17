@@ -47,40 +47,40 @@ const Textures = struct {
         Bucket,
     };
 
-    items: [6]ray.Texture2D,
-    mod_times: [6]c_long,
-    const names: [6][]const u8 = [6][]const u8{
-        "assets/icon.png",
-        "assets/file_icon.png",
-        "assets/save_icon.png",
-        "assets/eraser_icon.png",
-        "assets/pencil_icon.png",
-        "assets/bucket_icon.png",
-    };
+    names: []const []const u8,
 
-    pub fn init() Self {
-        var items = [_]ray.Texture2D{undefined} ** 6;
-        for (0.., &items) |i, *item| {
-            item.* = ray.LoadTexture(@as([*c]u8, @constCast(Self.names[i].ptr)));
+    items: std.ArrayList(ray.Texture2D),
+    mod_times: std.ArrayList(c_long),
+
+    pub fn init(alloc: Allocator, names: []const []const u8) !Self {
+        var items = std.ArrayList(ray.Texture2D).init(alloc);
+        errdefer items.deinit();
+        var mod_times = std.ArrayList(c_long).init(alloc);
+        errdefer mod_times.deinit();
+        for (names) |name| {
+            const c_name: [*c]u8 = @constCast(name.ptr);
+            try items.append(ray.LoadTexture(c_name));
+            const mod_time = ray.GetFileModTime(c_name);
+            try mod_times.append(mod_time);
         }
-        var mod_times = [_]c_long{0} ** 6;
-        for (0.., &mod_times) |i, *item| {
-            item.* = ray.GetFileModTime(@as([*c]u8, @constCast(Self.names[i].ptr)));
-        }
+
         return Self{
             .items = items,
             .mod_times = mod_times,
+            .names = names,
         };
     }
 
     pub fn deinit(self: Self) void {
-        for (self.items) |item| {
+        for (self.items.items) |item| {
             ray.UnloadTexture(item);
         }
+        self.items.deinit();
+        self.mod_times.deinit();
     }
 
     pub fn get(self: *const Self, textureType: Self.TextureType) ray.Texture2D {
-        return self.items[@intFromEnum(textureType)];
+        return self.items.items[@intFromEnum(textureType)];
     }
 
     pub fn getAsImage(self: *const Self, textureType: Self.TextureType) ray.Image {
@@ -93,12 +93,12 @@ const Textures = struct {
     }
 
     pub fn update(self: *Self) void {
-        for (0.., &Self.names, &self.mod_times) |i, *name, *mod_time| {
+        for (0.., self.names, self.mod_times.items) |i, *name, *mod_time| {
             const c_name: [*c]u8 = @constCast(name.ptr);
             const new_mod_time = ray.GetFileModTime(c_name);
             if (new_mod_time > mod_time.*) {
-                ray.UnloadTexture(self.items[i]);
-                self.items[i] = ray.LoadTexture(c_name);
+                ray.UnloadTexture(self.items.items[i]);
+                self.items.items[i] = ray.LoadTexture(c_name);
             }
         }
     }
@@ -130,7 +130,14 @@ pub fn main() !void {
     const screen_height = ray.GetMonitorHeight(monitor);
     ray.SetWindowMinSize(400, 400);
     ray.SetWindowMaxSize(screen_width, screen_height);
-    var textures = Textures.init();
+    var textures = try Textures.init(allocator, &[_][]const u8{
+        "assets/icon.png",
+        "assets/file_icon.png",
+        "assets/save_icon.png",
+        "assets/eraser_icon.png",
+        "assets/pencil_icon.png",
+        "assets/bucket_icon.png",
+    });
     defer textures.deinit();
 
     // ray.SetWindowIcon(textures.getAsImage(.Icon));
