@@ -303,6 +303,8 @@ pub fn main() !void {
     const canvas_x = (ctx.zoom_level - @mod(gui_max_width, ctx.zoom_level)) + gui_max_width;
     const canvas_y = ctx.zoom_level * 2;
 
+    var frames_counter: c_int = 0;
+    const frames_speed: c_int = 8;
     ray.SetTargetFPS(60);
     while (!ray.WindowShouldClose()) {
         const is_mouse_on_canvas = mouseIsInCanvas(canvas_x, canvas_y, ctx.canvas_width * ctx.zoom_level, ctx.canvas_height * ctx.zoom_level);
@@ -427,7 +429,10 @@ pub fn main() !void {
             const a = color_pallet.colors.items[index].a;
             ctx.color = ray.Color{ .r = r, .g = g, .b = b, .a = a };
         }
-        if (ctx.playing) {
+
+        frames_counter += 1;
+        if (ctx.playing and frames_counter >= (@divTrunc(60, frames_speed))) {
+            frames_counter = 0;
             ctx.canvas.next();
         }
 
