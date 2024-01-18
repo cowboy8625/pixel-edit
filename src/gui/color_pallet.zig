@@ -303,7 +303,7 @@ fn colorPicker(background: *const ray.Texture2D, x: c_int, y: c_int) ?ray.Color 
 
         // -----------Draw-------------
         ray.BeginDrawing();
-        utils.drawTexture(background, 0, 0);
+        utils.drawTexture(background, 0, 0, 255);
         ray.DrawRectangleRec(bounding_box, ray.LIGHTGRAY);
         ray.DrawRectangleRec(header_bar, ray.DARKGRAY);
         ray.DrawText("Color Picker", x + 40, y, cell_size, ray.WHITE);

@@ -53,6 +53,7 @@ const CanvasManager = struct {
     alloc: Allocator,
     index: usize = 0,
     frames: std.ArrayList(Canvas),
+    opacity: u8 = 255,
     // TODO: layers will go here too
 
     const Self = @This();
@@ -97,6 +98,11 @@ const CanvasManager = struct {
 
     pub fn getCurrent(self: *Self) *Canvas {
         return &self.frames.items[self.index];
+    }
+
+    pub fn getPreviousFrame(self: *Self) ?*Canvas {
+        if (self.index == 0) return null;
+        return &self.frames.items[self.index - 1];
     }
 
     pub fn next(self: *Self) void {
@@ -232,6 +238,9 @@ pub fn main() !void {
     const canvasTexture = ray.LoadRenderTexture(ctx.canvas_width * ctx.zoom_level, ctx.canvas_height * ctx.zoom_level);
     defer ray.UnloadTexture(canvasTexture.texture);
 
+    const previousCanvasTexture = ray.LoadRenderTexture(ctx.canvas_width * ctx.zoom_level, ctx.canvas_height * ctx.zoom_level);
+    defer ray.UnloadTexture(previousCanvasTexture.texture);
+
     // Preview Texture
     const previewTexture = ray.LoadRenderTexture(ctx.canvas_width * ctx.zoom_level, ctx.canvas_height * ctx.zoom_level);
     defer ray.UnloadTexture(previewTexture.texture);
@@ -326,6 +335,16 @@ pub fn main() !void {
 
         if (is_ctrl_pressed and mouse_wheel < 0 and ctx.brush_size > 1) {
             ctx.brush_size -= 1;
+        }
+
+        if (ray.IsKeyDown(ray.KEY_O)) {
+            const d = ray.GetMouseWheelMove();
+            if (d > 0 and ctx.canvas.opacity < 255) {
+                ctx.canvas.opacity += 1;
+            }
+            if (d < 0 and ctx.canvas.opacity > 0) {
+                ctx.canvas.opacity -= 1;
+            }
         }
 
         if (ray.IsKeyDown(ray.KEY_LEFT_SHIFT) and is_mouse_on_canvas) {
@@ -443,13 +462,18 @@ pub fn main() !void {
 
         const mouse = ray.GetMousePosition();
         updateCanvasTexture(canvasTexture, ctx.canvas.getCurrent(), ctx.zoom_level);
+        if (ctx.canvas.getPreviousFrame()) |previousFrameCanvas| {
+            updateCanvasTexture(previousCanvasTexture, previousFrameCanvas, ctx.zoom_level);
+        }
         updatePreviewTexture(previewTexture, &pixel_buffer, ctx.zoom_level, ctx.color);
 
         ray.BeginTextureMode(appTexture);
         ray.ClearBackground(ray.LIGHTGRAY);
 
-        gui.drawTexture(&canvasTexture.texture, canvas_x, canvas_y);
-        gui.drawTexture(&previewTexture.texture, canvas_x, canvas_y);
+        gui.drawTexture(&previousCanvasTexture.texture, canvas_x, canvas_y, 255);
+        gui.drawTexture(&canvasTexture.texture, canvas_x, canvas_y, ctx.canvas.opacity);
+        gui.drawTexture(&previewTexture.texture, canvas_x, canvas_y, 255);
+
         // GUI
         button_open.draw();
         button_save.draw();
@@ -459,16 +483,19 @@ pub fn main() !void {
         button_play.draw();
         button_plus_frame.draw();
         button_minus_frame.draw();
+
         color_pallet.draw();
+
         drawSelectedTool(ctx.mode);
         ray.DrawText(ray.TextFormat("Frames: %d/%d", ctx.canvas.current_frame(), ctx.canvas.len()), 100, 0, 20, ray.BLACK);
+        ray.DrawText(ray.TextFormat("Opacity: %d", ctx.canvas.opacity), 300, 0, 20, ray.BLACK);
 
         // Brush
         drawBrush(&ctx, mouse, is_mouse_on_canvas);
         ray.EndTextureMode();
 
         ray.BeginDrawing();
-        gui.drawTexture(&appTexture.texture, 0, 0);
+        gui.drawTexture(&appTexture.texture, 0, 0, 255);
         ray.EndDrawing();
         //----------------------------------------------------------------------------------
     }
@@ -666,7 +693,6 @@ fn fillTool(alloc: Allocator, canvas: *Canvas, ctx: *AppContext, x: c_int, y: c_
             (0 <= pixel.y and pixel.y < ctx.canvas_height) and
             compareColors(current_color, target_color))
         {
-            // print("{}, {} -- {}\n", .{pixel.x, pixel.y, replacement_color});
             try ctx.canvas.put(pixel, replacement_color);
             try stack.append(.{ .x = pixel.x + 1, .y = pixel.y    });
             try stack.append(.{ .x = pixel.x - 1, .y = pixel.y    });
