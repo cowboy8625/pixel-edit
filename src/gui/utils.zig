@@ -1,4 +1,7 @@
-const ray = @cImport(@cInclude("raylib.h"));
+const ray = @cImport({
+    @cInclude("raylib.h");
+    @cInclude("raymath.h");
+});
 
 pub fn drawTexture(
     target: *const ray.Texture2D,

@@ -466,7 +466,16 @@ pub fn main() !void {
             camera.target = ray.Vector2Add(camera.target, delta);
         }
 
-        camera.zoom += ray.GetMouseWheelMove() * 0.05;
+        // zig fmt: off
+        if (!(
+                ray.IsKeyDown(ray.KEY_R) or
+                ray.IsKeyDown(ray.KEY_G) or
+                ray.IsKeyDown(ray.KEY_B) or
+                ray.IsKeyDown(ray.KEY_A) or
+                ray.IsKeyDown(ray.KEY_O)
+            )) {
+            camera.zoom += ray.GetMouseWheelMove() * 0.05;
+        }
 
         if (camera.zoom > 3) camera.zoom = 3;
         if (camera.zoom < 0.1) camera.zoom = 0.1;

@@ -1,14 +1,17 @@
 const utils = @import("utils.zig");
 const std = @import("std");
 const button = @import("button.zig");
-const ray = @cImport(@cInclude("raylib.h"));
+const ray = @cImport({
+    @cInclude("raylib.h");
+    @cInclude("raymath.h");
+});
 const Allocator = std.mem.Allocator;
 
 pub const ColorPallet = struct {
     const Self = @This();
 
     position: ray.Vector2,
-    selected_color: struct { x: c_int, y: c_int },
+    selected_color: struct { x: c_int, y: c_int, index: usize },
     colors: std.ArrayList(ray.Color),
     alloc: Allocator,
 
@@ -25,7 +28,7 @@ pub const ColorPallet = struct {
         const pos = getCordsFromIndex(0, 32, 2, position);
         return Self{
             .position = position,
-            .selected_color = .{ .x = pos.x, .y = pos.y },
+            .selected_color = .{ .x = pos.x, .y = pos.y, .index = 0 },
             .colors = colors,
             .alloc = alloc,
         };
@@ -65,20 +68,24 @@ pub const ColorPallet = struct {
             const is_collision = ray.CheckCollisionPointRec(mouse, bounding_box);
             if (is_left_mouse_down and is_collision) {
                 const pos = getCordsFromIndex(i, self.cell_size, w, self.position);
-                self.selected_color = .{ .x = pos.x, .y = pos.y };
+                self.selected_color = .{ .x = pos.x, .y = pos.y, .index = i };
                 return i;
-            } else if (is_collision and ray.IsKeyDown(ray.KEY_R)) {
-                incColor(&self.colors.items[i].r);
-            } else if (is_collision and ray.IsKeyDown(ray.KEY_G)) {
-                incColor(&self.colors.items[i].g);
-            } else if (is_collision and ray.IsKeyDown(ray.KEY_B)) {
-                incColor(&self.colors.items[i].b);
-            } else if (is_collision and ray.IsKeyDown(ray.KEY_A)) {
-                incColor(&self.colors.items[i].a);
             }
             y += @intFromBool(i % w >= w - 1);
         }
-        return null;
+        if (ray.IsKeyDown(ray.KEY_R)) {
+            incColor(&self.colors.items[self.selected_color.index].r);
+        }
+        if (ray.IsKeyDown(ray.KEY_G)) {
+            incColor(&self.colors.items[self.selected_color.index].g);
+        }
+        if (ray.IsKeyDown(ray.KEY_B)) {
+            incColor(&self.colors.items[self.selected_color.index].b);
+        }
+        if (ray.IsKeyDown(ray.KEY_A)) {
+            incColor(&self.colors.items[self.selected_color.index].a);
+        }
+        return self.selected_color.index;
     }
 
     pub fn draw(self: *Self) void {

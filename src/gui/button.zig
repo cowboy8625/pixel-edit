@@ -1,5 +1,8 @@
 const std = @import("std");
-const ray = @cImport(@cInclude("raylib.h"));
+const ray = @cImport({
+    @cInclude("raylib.h");
+    @cInclude("raymath.h");
+});
 
 pub const Button = struct {
     const Self = @This();
