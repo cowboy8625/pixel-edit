@@ -2,10 +2,13 @@ const std = @import("std");
 const builtin = @import("builtin");
 const Allocator = std.mem.Allocator;
 const print = std.debug.print;
-const ray = @cImport(@cInclude("raylib.h"));
-const raygui = @cImport(@cInclude("raygui.h"));
+
 const gui = @import("gui/mod.zig");
 const nfd = @import("nfd");
+const ray = @cImport({
+    @cInclude("raylib.h");
+    @cInclude("raymath.h");
+});
 
 const ArrayVec = std.ArrayList(ray.Vector2);
 const Canvas = std.AutoHashMap(Pixel, struct { color: ray.Color });
@@ -227,12 +230,15 @@ pub fn main() !void {
     });
     defer textures.deinit();
 
+    var camera = ray.Camera2D{
+        .offset = .{ .x = 0, .y = 0 },
+        .target = .{ .x = 0, .y = 0 },
+        .rotation = 0,
+        .zoom = 1,
+    };
+
     // ray.SetWindowIcon(textures.getAsImage(.Icon));
     // ray.ToggleBorderlessWindowed();
-
-    // App Texture
-    const appTexture = ray.LoadRenderTexture(screen_width, screen_height);
-    defer ray.UnloadTexture(appTexture.texture);
 
     // Canvas Texture
     const canvasTexture = ray.LoadRenderTexture(ctx.canvas_width * ctx.zoom_level, ctx.canvas_height * ctx.zoom_level);
@@ -316,7 +322,7 @@ pub fn main() !void {
     const frames_speed: c_int = 8;
     ray.SetTargetFPS(60);
     while (!ray.WindowShouldClose()) {
-        const is_mouse_on_canvas = mouseIsInCanvas(canvas_x, canvas_y, ctx.canvas_width * ctx.zoom_level, ctx.canvas_height * ctx.zoom_level);
+        const is_mouse_on_canvas = mouseIsInCanvas(camera, canvas_x, canvas_y, ctx.canvas_width * ctx.zoom_level, ctx.canvas_height * ctx.zoom_level);
         // Update
         //----------------------------------------------------------------------------------
 
@@ -348,7 +354,7 @@ pub fn main() !void {
         }
 
         if (ray.IsKeyDown(ray.KEY_LEFT_SHIFT) and is_mouse_on_canvas) {
-            const pos = fix_point_to_grid(c_int, ctx.zoom_level, ray.GetMousePosition());
+            const pos = fix_point_to_grid(c_int, ctx.zoom_level, ray.GetScreenToWorld2D(ray.GetMousePosition(), camera));
             const grid_x = pos.x - canvas_x;
             const grid_y = pos.y - canvas_y;
             const x = @divTrunc(grid_x, ctx.zoom_level);
@@ -366,7 +372,7 @@ pub fn main() !void {
         }
 
         if (ctx.is_drawing and is_mouse_on_canvas) {
-            const pos = fix_point_to_grid(c_int, ctx.zoom_level, ray.GetMousePosition());
+            const pos = fix_point_to_grid(c_int, ctx.zoom_level, ray.GetScreenToWorld2D(ray.GetMousePosition(), camera));
             const grid_x = pos.x - canvas_x;
             const grid_y = pos.y - canvas_y;
             const x = @divTrunc(grid_x, ctx.zoom_level);
@@ -440,7 +446,7 @@ pub fn main() !void {
         }
 
         // color pallet
-        if (try color_pallet.update(&appTexture.texture)) |index| {
+        if (try color_pallet.update()) |index| {
             const r = color_pallet.colors.items[index].r;
             const g = color_pallet.colors.items[index].g;
             const b = color_pallet.colors.items[index].b;
@@ -454,24 +460,40 @@ pub fn main() !void {
             ctx.canvas.next();
         }
 
+        if (ray.IsMouseButtonDown(ray.MOUSE_RIGHT_BUTTON)) {
+            var delta = ray.GetMouseDelta();
+            delta = ray.Vector2Scale(delta, -1.0 / camera.zoom);
+            camera.target = ray.Vector2Add(camera.target, delta);
+        }
+
+        camera.zoom += ray.GetMouseWheelMove() * 0.05;
+
+        if (camera.zoom > 3) camera.zoom = 3;
+        if (camera.zoom < 0.1) camera.zoom = 0.1;
+
         //----------------------------------------------------------------------------------
 
         // Draw
         //----------------------------------------------------------------------------------
 
-        const mouse = ray.GetMousePosition();
+        const pos = ray.GetMousePosition();
+        const mouse = ray.GetScreenToWorld2D(pos, camera);
         updateCanvasTexture(canvasTexture, ctx.canvas.getCurrent(), ctx.zoom_level);
         if (ctx.canvas.getPreviousFrame()) |previousFrameCanvas| {
             updateCanvasTexture(previousCanvasTexture, previousFrameCanvas, ctx.zoom_level);
         }
         updatePreviewTexture(previewTexture, &pixel_buffer, ctx.zoom_level, ctx.color);
 
-        ray.BeginTextureMode(appTexture);
+        ray.BeginDrawing();
         ray.ClearBackground(ray.LIGHTGRAY);
+        ray.BeginMode2D(camera);
 
         gui.drawTexture(&previousCanvasTexture.texture, canvas_x, canvas_y, 255);
         gui.drawTexture(&canvasTexture.texture, canvas_x, canvas_y, ctx.canvas.opacity);
         gui.drawTexture(&previewTexture.texture, canvas_x, canvas_y, 255);
+        // Brush
+        drawBrush(&ctx, mouse, is_mouse_on_canvas);
+        ray.EndMode2D();
 
         // GUI
         button_open.draw();
@@ -490,12 +512,6 @@ pub fn main() !void {
         ray.DrawText(ray.TextFormat("Opacity: %d", ctx.canvas.opacity), 300, 0, 20, ray.BLACK);
         ray.DrawText(ray.TextFormat("r: %d, g: %d, b: %d, a: %d", ctx.color.r, ctx.color.g, ctx.color.b, ctx.color.a), 500, 0, 20, ray.BLACK);
 
-        // Brush
-        drawBrush(&ctx, mouse, is_mouse_on_canvas);
-        ray.EndTextureMode();
-
-        ray.BeginDrawing();
-        gui.drawTexture(&appTexture.texture, 0, 0, 255);
         ray.EndDrawing();
         //----------------------------------------------------------------------------------
     }
@@ -610,8 +626,9 @@ fn asF32(x: c_int) f32 {
     return @as(f32, @floatFromInt(x));
 }
 
-fn mouseIsInCanvas(left: c_int, top: c_int, width: c_int, height: c_int) bool {
-    const pos = ray.GetMousePosition();
+fn mouseIsInCanvas(camera: ray.Camera2D, left: c_int, top: c_int, width: c_int, height: c_int) bool {
+    const mouse = ray.GetMousePosition();
+    const pos = ray.GetScreenToWorld2D(mouse, camera);
     return ray.CheckCollisionPointRec(pos, ray.Rectangle{ .x = asF32(left), .y = asF32(top), .width = asF32(width), .height = asF32(height) });
 }
 

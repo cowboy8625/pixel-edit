@@ -46,8 +46,7 @@ pub const ColorPallet = struct {
         return @floatFromInt(h);
     }
 
-    pub fn update(self: *Self, background: *const ray.Texture2D) !?usize {
-        _ = background;
+    pub fn update(self: *Self) !?usize {
         const mouse = ray.GetMousePosition();
         const pos_x = @as(c_int, @intFromFloat(self.position.x));
         const pos_y = @as(c_int, @intFromFloat(self.position.y));
