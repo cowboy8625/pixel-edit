@@ -47,6 +47,7 @@ pub const ColorPallet = struct {
     }
 
     pub fn update(self: *Self, background: *const ray.Texture2D) !?usize {
+        _ = background;
         const mouse = ray.GetMousePosition();
         const pos_x = @as(c_int, @intFromFloat(self.position.x));
         const pos_y = @as(c_int, @intFromFloat(self.position.y));
@@ -62,18 +63,19 @@ pub const ColorPallet = struct {
                 .height = @as(f32, @floatFromInt(self.cell_size)),
             };
             const is_left_mouse_down = ray.IsMouseButtonPressed(ray.MOUSE_LEFT_BUTTON);
-            const is_right_mouse_down = ray.IsMouseButtonPressed(ray.MOUSE_RIGHT_BUTTON);
             const is_collision = ray.CheckCollisionPointRec(mouse, bounding_box);
-            if (is_right_mouse_down and is_collision) {
-                if (colorPicker(background, 200, 100)) |color| {
-                    try self.colors.append(color);
-                    return null;
-                }
-            }
             if (is_left_mouse_down and is_collision) {
                 const pos = getCordsFromIndex(i, self.cell_size, w, self.position);
                 self.selected_color = .{ .x = pos.x, .y = pos.y };
                 return i;
+            } else if (is_collision and ray.IsKeyDown(ray.KEY_R)) {
+                incColor(&self.colors.items[i].r);
+            } else if (is_collision and ray.IsKeyDown(ray.KEY_G)) {
+                incColor(&self.colors.items[i].g);
+            } else if (is_collision and ray.IsKeyDown(ray.KEY_B)) {
+                incColor(&self.colors.items[i].b);
+            } else if (is_collision and ray.IsKeyDown(ray.KEY_A)) {
+                incColor(&self.colors.items[i].a);
             }
             y += @intFromBool(i % w >= w - 1);
         }
@@ -108,6 +110,14 @@ pub const ColorPallet = struct {
     }
 };
 
+fn incColor(value: *u8) void {
+    const d = ray.GetMouseWheelMove();
+    if (d > 0) {
+    value.* +|= 1;
+    } else if (d < 0) {
+    value.* -|= 1;
+    }
+}
 
 fn colorPicker(background: *const ray.Texture2D, x: c_int, y: c_int) ?ray.Color {
     const colors = [_]ray.Color{

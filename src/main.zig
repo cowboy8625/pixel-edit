@@ -398,7 +398,6 @@ pub fn main() !void {
             if (open_path) |path| {
                 const image = ray.LoadImage(@as([*c]u8, @constCast(path.ptr)));
                 defer ray.UnloadImage(image);
-                print("Loaded: {s}\n", .{path});
                 for (0..@as(usize, @intCast(image.width))) |x| {
                     for (0..@as(usize, @intCast(image.height))) |y| {
                         const color = ray.GetImageColor(image, @intCast(x), @intCast(y));
@@ -411,7 +410,7 @@ pub fn main() !void {
         if (button_save.update()) {
             const save_path = try nfd.saveDialog(allocator, null, null);
             if (save_path) |path| {
-                saveCanvasToPng(path, ctx.canvas.getCurrent(), ctx.canvas_width, ctx.canvas_height);
+                saveCanvasToPng(path, &ctx.canvas, ctx.canvas_width, ctx.canvas_height);
                 textures.update();
             }
         }
@@ -489,6 +488,7 @@ pub fn main() !void {
         drawSelectedTool(ctx.mode);
         ray.DrawText(ray.TextFormat("Frames: %d/%d", ctx.canvas.current_frame(), ctx.canvas.len()), 100, 0, 20, ray.BLACK);
         ray.DrawText(ray.TextFormat("Opacity: %d", ctx.canvas.opacity), 300, 0, 20, ray.BLACK);
+        ray.DrawText(ray.TextFormat("r: %d, g: %d, b: %d, a: %d", ctx.color.r, ctx.color.g, ctx.color.b, ctx.color.a), 500, 0, 20, ray.BLACK);
 
         // Brush
         drawBrush(&ctx, mouse, is_mouse_on_canvas);
@@ -617,23 +617,29 @@ fn mouseIsInCanvas(left: c_int, top: c_int, width: c_int, height: c_int) bool {
 
 fn saveCanvasToPng(
         save_file_path: []const u8,
-        canvas: *Canvas,
+        manager: *CanvasManager,
         screen_width: c_int,
         screen_height: c_int
     ) void {
-    const target = ray.LoadRenderTexture(screen_width, screen_height);
+    const length: c_int = @intCast(manager.frames.items.len);
+    const target = ray.LoadRenderTexture(screen_width * length, screen_height);
     defer ray.UnloadTexture(target.texture);
 
     ray.BeginTextureMode(target);
 
-    var iter_canvas = canvas.iterator();
-    while (iter_canvas.next()) |pixel| {
-        // zig fmt: off
-        ray.DrawPixel(
-            @intCast(pixel.key_ptr.x),
-            @intCast(pixel.key_ptr.y),
-            pixel.value_ptr.color
-        );
+
+    var offset: c_int = 0;
+    for (manager.frames.items) |frame| {
+        var iter_canvas = frame.iterator();
+        while (iter_canvas.next()) |pixel| {
+            // zig fmt: off
+            ray.DrawPixel(
+                @intCast(pixel.key_ptr.x + offset),
+                @intCast(pixel.key_ptr.y),
+                pixel.value_ptr.color
+            );
+        }
+        offset += screen_width;
     }
 
     ray.EndTextureMode();
