@@ -14,6 +14,8 @@ const ArrayVec = std.ArrayList(ray.Vector2);
 const Canvas = std.AutoHashMap(Pixel, struct { color: ray.Color });
 const PixelBuffer = std.AutoHashMap(Pixel, void);
 
+const FONT_SIZE: c_int = 20;
+
 const Mode = enum {
     Draw,
     DrawLine,
@@ -28,6 +30,7 @@ const Pixel = struct {
 
 const AppContext = struct {
     brush_size: c_int = 1,
+    color_index: usize = 0,
     color: ray.Color = ray.DARKGRAY,
     erase_color: ray.Color = ray.WHITE,
     is_drawing: bool = false,
@@ -37,6 +40,8 @@ const AppContext = struct {
     canvas_height: c_int = 64,
     last_pixel: Pixel = .{ .x = 0, .y = 0 },
     playing: bool = false,
+    selected_option: usize = 0,
+    step: u8 = 1,
     canvas: CanvasManager,
 
     const Self = @This();
@@ -400,14 +405,35 @@ pub fn main() !void {
         }
 
         if (button_open.update()) {
+            // Get path of image
             const open_path = try nfd.openDialog(allocator, null, null);
+            // only if path is not null
             if (open_path) |path| {
+                // Load image
                 const image = ray.LoadImage(@as([*c]u8, @constCast(path.ptr)));
+                // Unload image when out of scope
                 defer ray.UnloadImage(image);
-                for (0..@as(usize, @intCast(image.width))) |x| {
-                    for (0..@as(usize, @intCast(image.height))) |y| {
-                        const color = ray.GetImageColor(image, @intCast(x), @intCast(y));
-                        try ctx.canvas.put(.{ .x = @intCast(x), .y = @intCast(y) }, color);
+                // get the number of frames
+                const frame_count: usize = @intCast(@divTrunc(image.width, ctx.canvas_width));
+                // for each frame
+                for (0..frame_count) |offset| {
+                    // get the frame
+                    const frame = ray.ImageFromImage(image, .{
+                        .x = @as(f32, @floatFromInt(offset * @as(usize, @intCast(ctx.canvas_width)))),
+                        .y = 0,
+                        .width = @as(f32, @floatFromInt(ctx.canvas_width)),
+                        .height = @as(f32, @floatFromInt(ctx.canvas_height)),
+                    });
+                    // insert each pixel into the canvas
+                    for (0..@as(usize, @intCast(frame.width))) |x| {
+                        for (0..@as(usize, @intCast(frame.height))) |y| {
+                            const color = ray.GetImageColor(frame, @intCast(x), @intCast(y));
+                            try ctx.canvas.put(.{ .x = @intCast(x), .y = @intCast(y) }, color);
+                        }
+                    }
+                    // only if a new frame is needed
+                    if (frame_count - 1 != offset) {
+                        try ctx.canvas.nextOrCreate();
                     }
                 }
             }
@@ -438,11 +464,29 @@ pub fn main() !void {
         }
 
         if (button_plus_frame.update()) {
-            try ctx.canvas.nextOrCreate();
+            switch (ctx.selected_option) {
+                0 => try ctx.canvas.nextOrCreate(),
+                1 => ctx.canvas.opacity +|= ctx.step,
+                2 => color_pallet.colors.items[ctx.color_index].r += ctx.step,
+                3 => color_pallet.colors.items[ctx.color_index].g +|= ctx.step,
+                4 => color_pallet.colors.items[ctx.color_index].b +|= ctx.step,
+                5 => color_pallet.colors.items[ctx.color_index].a +|= ctx.step,
+                6 => ctx.step +|= 5,
+                else => {},
+            }
         }
 
         if (button_minus_frame.update()) {
-            ctx.canvas.prev();
+            switch (ctx.selected_option) {
+                0 => ctx.canvas.prev(),
+                1 => ctx.canvas.opacity -|= ctx.step,
+                2 => color_pallet.colors.items[ctx.color_index].r -|= ctx.step,
+                3 => color_pallet.colors.items[ctx.color_index].g -|= ctx.step,
+                4 => color_pallet.colors.items[ctx.color_index].b -|= ctx.step,
+                5 => color_pallet.colors.items[ctx.color_index].a -|= ctx.step,
+                6 => ctx.step -|= 5,
+                else => {},
+            }
         }
 
         // color pallet
@@ -452,6 +496,7 @@ pub fn main() !void {
             const b = color_pallet.colors.items[index].b;
             const a = color_pallet.colors.items[index].a;
             ctx.color = ray.Color{ .r = r, .g = g, .b = b, .a = a };
+            ctx.color_index = index;
         }
 
         frames_counter += 1;
@@ -479,6 +524,9 @@ pub fn main() !void {
 
         if (camera.zoom > 3) camera.zoom = 3;
         if (camera.zoom < 0.1) camera.zoom = 0.1;
+        if (ray.IsKeyReleased(ray.KEY_SPACE)) {
+            ctx.selected_option = @mod(ctx.selected_option + 1, 7);
+        }
 
         //----------------------------------------------------------------------------------
 
@@ -517,9 +565,46 @@ pub fn main() !void {
         color_pallet.draw();
 
         drawSelectedTool(ctx.mode);
-        ray.DrawText(ray.TextFormat("Frames: %d/%d", ctx.canvas.current_frame(), ctx.canvas.len()), 100, 0, 20, ray.BLACK);
-        ray.DrawText(ray.TextFormat("Opacity: %d", ctx.canvas.opacity), 300, 0, 20, ray.BLACK);
-        ray.DrawText(ray.TextFormat("r: %d, g: %d, b: %d, a: %d", ctx.color.r, ctx.color.g, ctx.color.b, ctx.color.a), 500, 0, 20, ray.BLACK);
+        const foo = struct { text: []u8, x: c_int };
+        // zig fmt: off
+        const texts: []const foo = &[_]foo{
+            .{
+                .text = try std.fmt.allocPrintZ(allocator, "Frames: {d}/{d}", .{ctx.canvas.current_frame(), ctx.canvas.len()}),
+                .x = 100
+            },
+            .{
+                .text = try std.fmt.allocPrintZ(allocator, "Opacity: {d}", .{ctx.canvas.opacity}),
+                .x = 250,
+            },
+            .{
+                .text = try std.fmt.allocPrintZ(allocator, "r: {d}", .{ctx.color.r}),
+                .x = 400,
+            },
+            .{
+                .text = try std.fmt.allocPrintZ(allocator, "g: {d}", .{ctx.color.g}),
+                .x = 500,
+            },
+            .{
+                .text = try std.fmt.allocPrintZ(allocator, "b: {d}", .{ctx.color.b}),
+                .x = 600,
+            },
+            .{
+                .text = try std.fmt.allocPrintZ(allocator, "a: {d}", .{ctx.color.a}),
+                .x = 700,
+            },
+            .{
+                .text = try std.fmt.allocPrintZ(allocator, "step: {d}", .{ctx.step}),
+                .x = 800,
+            },
+        };
+        const t: [*c]u8 = @constCast(texts[ctx.selected_option].text.ptr);
+        const text_width: c_int = @intFromFloat(ray.MeasureTextEx(ray.GetFontDefault(), t, FONT_SIZE, 2).x);
+        ray.DrawRectangle(texts[ctx.selected_option].x, 0, text_width, FONT_SIZE, ray.RED);
+        for (texts) |text| {
+            const a: [*c]u8 = @constCast(text.text.ptr);
+            ray.DrawText(a, text.x, 0, FONT_SIZE, ray.BLACK);
+            allocator.free(text.text);
+        }
 
         ray.EndDrawing();
         //----------------------------------------------------------------------------------
