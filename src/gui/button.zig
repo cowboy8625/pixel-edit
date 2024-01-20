@@ -42,16 +42,18 @@ pub const Button = struct {
         return self.get_rect().height;
     }
 
-    pub fn update(self: *Self) bool {
+    pub fn update(self: *Self) ?enum { Left, Right } {
         const bounding_box = self.get_rect();
         self.is_hovered = false;
         if (ray.CheckCollisionPointRec(ray.GetMousePosition(), bounding_box)) {
             self.is_hovered = true;
             if (ray.IsMouseButtonPressed(ray.MOUSE_LEFT_BUTTON)) {
-                return true;
+                return .Left;
+            } else if (ray.IsMouseButtonPressed(ray.MOUSE_RIGHT_BUTTON)) {
+                return .Right;
             }
         }
-        return false;
+        return null;
     }
 
     pub fn draw(self: *Self) void {

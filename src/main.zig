@@ -18,6 +18,7 @@ const FONT_SIZE: c_int = 20;
 
 const Mode = enum {
     Draw,
+    Shade,
     DrawLine,
     Erase,
     Fill,
@@ -132,6 +133,10 @@ const CanvasManager = struct {
     pub fn put(self: *Self, pixel: Pixel, color: ray.Color) !void {
         try self.frames.items[self.index].put(pixel, .{ .color = color });
     }
+
+    pub fn get(self: *Self, pixel: Pixel) ray.Color {
+        return if (self.frames.items[self.index].get(pixel)) |c| c.color else ray.BLANK;
+    }
 };
 
 const Textures = struct {
@@ -212,9 +217,9 @@ pub fn main() !void {
 
     // Initialize ray
     ray.SetConfigFlags(ray.FLAG_WINDOW_RESIZABLE);
-    if (builtin.mode != .Debug) {
-        ray.SetTraceLogLevel(ray.LOG_NONE);
-    }
+    // if (builtin.mode != .Debug) {
+    //     ray.SetTraceLogLevel(ray.LOG_NONE);
+    // }
     ray.InitWindow(0, 0, "pixel edit");
     defer ray.CloseWindow();
     const monitor = ray.GetCurrentMonitor();
@@ -255,6 +260,10 @@ pub fn main() !void {
     // Preview Texture
     const previewTexture = ray.LoadRenderTexture(ctx.canvas_width * ctx.zoom_level, ctx.canvas_height * ctx.zoom_level);
     defer ray.UnloadTexture(previewTexture.texture);
+
+    // Text UI
+    var status_text_buffer = try allocator.alloc(u8, 100);
+    defer allocator.free(status_text_buffer);
 
     // Initialize GUI
     var button_y: f32 = 0;
@@ -382,10 +391,19 @@ pub fn main() !void {
             const grid_y = pos.y - canvas_y;
             const x = @divTrunc(grid_x, ctx.zoom_level);
             const y = @divTrunc(grid_y, ctx.zoom_level);
-            ctx.last_pixel = .{ .x = x, .y = y };
             switch (ctx.mode) {
                 Mode.Draw => {
                     try ctx.canvas.put(.{ .x = x, .y = y }, ctx.color);
+                },
+                Mode.Shade => if (ctx.last_pixel.x != x or ctx.last_pixel.y != y) {
+                    const current = ctx.canvas.get(.{ .x = x, .y = y });
+                    const color = .{
+                        .r = current.r -| 5,
+                        .g = current.g -| 5,
+                        .b = current.b -| 5,
+                        .a = current.a,
+                    };
+                    try ctx.canvas.put(.{ .x = x, .y = y }, color);
                 },
                 Mode.DrawLine => {
                     var iter = pixel_buffer.iterator();
@@ -402,9 +420,10 @@ pub fn main() !void {
                 },
                 Mode.Fill => try fillTool(allocator, ctx.canvas.getCurrent(), &ctx, x, y),
             }
+            ctx.last_pixel = .{ .x = x, .y = y };
         }
 
-        if (button_open.update()) {
+        if (button_open.update()) |_| {
             // Get path of image
             const open_path = try nfd.openDialog(allocator, null, null);
             // only if path is not null
@@ -439,7 +458,7 @@ pub fn main() !void {
             }
         }
 
-        if (button_save.update()) {
+        if (button_save.update()) |_| {
             const save_path = try nfd.saveDialog(allocator, null, null);
             if (save_path) |path| {
                 saveCanvasToPng(path, &ctx.canvas, ctx.canvas_width, ctx.canvas_height);
@@ -447,23 +466,26 @@ pub fn main() !void {
             }
         }
 
-        if (button_eraser.update()) {
+        if (button_eraser.update()) |_| {
             ctx.mode = Mode.Erase;
         }
 
-        if (button_pencil.update()) {
-            ctx.mode = Mode.Draw;
+        if (button_pencil.update()) |mouse_button| {
+            switch (mouse_button) {
+                .Right => ctx.mode = .Shade,
+                .Left => ctx.mode = .Draw,
+            }
         }
 
-        if (button_bucket.update()) {
+        if (button_bucket.update()) |_| {
             ctx.mode = Mode.Fill;
         }
 
-        if (button_play.update()) {
+        if (button_play.update()) |_| {
             ctx.playing = !ctx.playing;
         }
 
-        if (button_plus_frame.update()) {
+        if (button_plus_frame.update()) |_| {
             switch (ctx.selected_option) {
                 0 => try ctx.canvas.nextOrCreate(),
                 1 => ctx.canvas.opacity +|= ctx.step,
@@ -476,7 +498,7 @@ pub fn main() !void {
             }
         }
 
-        if (button_minus_frame.update()) {
+        if (button_minus_frame.update()) |_| {
             switch (ctx.selected_option) {
                 0 => ctx.canvas.prev(),
                 1 => ctx.canvas.opacity -|= ctx.step,
@@ -563,53 +585,37 @@ pub fn main() !void {
         button_minus_frame.draw();
 
         color_pallet.draw();
+        try drawStatusTextItems(&status_text_buffer, &ctx);
 
         drawSelectedTool(ctx.mode);
-        const foo = struct { text: []u8, x: c_int };
-        // zig fmt: off
-        const texts: []const foo = &[_]foo{
-            .{
-                .text = try std.fmt.allocPrintZ(allocator, "Frames: {d}/{d}", .{ctx.canvas.current_frame(), ctx.canvas.len()}),
-                .x = 100
-            },
-            .{
-                .text = try std.fmt.allocPrintZ(allocator, "Opacity: {d}", .{ctx.canvas.opacity}),
-                .x = 250,
-            },
-            .{
-                .text = try std.fmt.allocPrintZ(allocator, "r: {d}", .{ctx.color.r}),
-                .x = 400,
-            },
-            .{
-                .text = try std.fmt.allocPrintZ(allocator, "g: {d}", .{ctx.color.g}),
-                .x = 500,
-            },
-            .{
-                .text = try std.fmt.allocPrintZ(allocator, "b: {d}", .{ctx.color.b}),
-                .x = 600,
-            },
-            .{
-                .text = try std.fmt.allocPrintZ(allocator, "a: {d}", .{ctx.color.a}),
-                .x = 700,
-            },
-            .{
-                .text = try std.fmt.allocPrintZ(allocator, "step: {d}", .{ctx.step}),
-                .x = 800,
-            },
-        };
-        const t: [*c]u8 = @constCast(texts[ctx.selected_option].text.ptr);
-        const text_width: c_int = @intFromFloat(ray.MeasureTextEx(ray.GetFontDefault(), t, FONT_SIZE, 2).x);
-        ray.DrawRectangle(texts[ctx.selected_option].x, 0, text_width, FONT_SIZE, ray.RED);
-        for (texts) |text| {
-            const a: [*c]u8 = @constCast(text.text.ptr);
-            ray.DrawText(a, text.x, 0, FONT_SIZE, ray.BLACK);
-            allocator.free(text.text);
-        }
 
         ray.EndDrawing();
         //----------------------------------------------------------------------------------
     }
     ray.ShowCursor();
+}
+
+fn drawStatusTextItems(buffer: *[]u8, ctx: *AppContext) !void {
+    var x: c_int = 100;
+    for (0..7) |i| {
+        const string = switch(i) {
+            0 => try std.fmt.bufPrintZ(buffer.*, "Frames: {d}/{d}", .{ctx.canvas.current_frame(), ctx.canvas.len()}),
+            1 => try std.fmt.bufPrintZ(buffer.*, "Opacity: {d}", .{ctx.canvas.opacity}),
+            2 => try std.fmt.bufPrintZ(buffer.*, "r: {d}", .{ctx.color.r}),
+            3 => try std.fmt.bufPrintZ(buffer.*, "g: {d}", .{ctx.color.g}),
+            4 => try std.fmt.bufPrintZ(buffer.*, "b: {d}", .{ctx.color.b}),
+            5 => try std.fmt.bufPrintZ(buffer.*, "a: {d}", .{ctx.color.a}),
+            6 => try std.fmt.bufPrintZ(buffer.*, "step: {d}", .{ctx.step}),
+            else => unreachable,
+        };
+        const c_string: [*c]u8 = @constCast(string.ptr);
+        const text_width: c_int = @intFromFloat(ray.MeasureTextEx(ray.GetFontDefault(), c_string, FONT_SIZE, 2).x);
+        if (i == ctx.selected_option) {
+            ray.DrawRectangle(x, 0, text_width, FONT_SIZE, ray.RED);
+        }
+        ray.DrawText(c_string, x, 0, FONT_SIZE, ray.BLACK);
+        x += text_width + 20;
+    }
 }
 
 fn updateCanvasTexture(target: ray.RenderTexture2D, canvas: *Canvas, zoom_level: c_int) void {
@@ -677,12 +683,10 @@ fn drawBrush(
     }
     ray.HideCursor();
     const pos = fix_point_to_grid(c_int, ctx.zoom_level, mouse);
-    const color = if (
-            ctx.mode == Mode.Draw or
-            ctx.mode == Mode.DrawLine or
-            ctx.mode == Mode.Fill
-        ) ctx.color
-        else ctx.erase_color;
+    const color = switch (ctx.mode) {
+        .Draw, .DrawLine, .Fill, .Shade => ctx.color,
+        else => ctx.erase_color,
+    };
     ray.DrawRectangle(pos.x, pos.y, ctx.zoom_level, ctx.zoom_level, color);
     ray.DrawRectangleLines(pos.x, pos.y, ctx.zoom_level, ctx.zoom_level, ray.WHITE);
 }
@@ -690,9 +694,9 @@ fn drawBrush(
 fn drawSelectedTool(mode: Mode) void {
     const step: f32 = 64;
     const y = switch (mode) {
-        Mode.Erase => step * 2,
-        Mode.Draw, Mode.DrawLine => step * 3,
-        Mode.Fill => step * 4,
+        .Erase => step * 2,
+        .Draw, .DrawLine, .Shade => step * 3,
+        .Fill => step * 4,
     };
     const rect = ray.Rectangle{
         .x = 0,
