@@ -9,7 +9,6 @@ const ray = @cImport({
     @cInclude("raylib.h");
     @cInclude("raymath.h");
 });
-
 const ArrayVec = std.ArrayList(ray.Vector2);
 const Canvas = std.AutoHashMap(Pixel, struct { color: ray.Color });
 const PixelBuffer = std.AutoHashMap(Pixel, void);
@@ -145,34 +144,53 @@ const Textures = struct {
     // TODO: make this generate at compile time?
     pub const TextureType = enum { Icon, File, Save, Eraser, Pencil, Bucket, Plus, Minus, Play };
 
-    names: []const []const u8,
+    names: std.ArrayList([]u8),
 
     items: std.ArrayList(ray.Texture2D),
     mod_times: std.ArrayList(c_long),
+    alloc: Allocator,
 
     pub fn init(alloc: Allocator, names: []const []const u8) !Self {
         var items = std.ArrayList(ray.Texture2D).init(alloc);
         errdefer items.deinit();
         var mod_times = std.ArrayList(c_long).init(alloc);
         errdefer mod_times.deinit();
-        for (names) |name| {
-            const c_name: [*c]u8 = @constCast(name.ptr);
+
+        var fmt_names = std.ArrayList([]u8).init(alloc);
+        errdefer fmt_names.deinit();
+
+        const PATH = try getAssetsPath(alloc);
+        defer alloc.free(PATH);
+
+        const buf = try alloc.alloc(u8, 100);
+        defer alloc.free(buf);
+        for (names) |filename| {
+            const string = try std.fmt.bufPrintZ(buf, "{s}/{s}", .{ PATH, filename });
+            const c_name: [*c]u8 = @constCast(string.ptr);
             try items.append(ray.LoadTexture(c_name));
             const mod_time = ray.GetFileModTime(c_name);
             try mod_times.append(mod_time);
+            try fmt_names.append(try alloc.dupe(u8, string));
         }
 
         return Self{
             .items = items,
             .mod_times = mod_times,
-            .names = names,
+            .names = fmt_names,
+            .alloc = alloc,
         };
     }
 
     pub fn deinit(self: Self) void {
+        for (self.names.items) |name| {
+            defer self.alloc.free(name);
+        }
+
         for (self.items.items) |item| {
             ray.UnloadTexture(item);
         }
+
+        self.names.deinit();
         self.items.deinit();
         self.mod_times.deinit();
     }
@@ -187,11 +205,11 @@ const Textures = struct {
     }
 
     pub fn len(self: *Self) usize {
-        return self.items.len;
+        return self.items.items.len;
     }
 
     pub fn update(self: *Self) void {
-        for (0.., self.names, self.mod_times.items) |i, *name, *mod_time| {
+        for (0.., self.names.items, self.mod_times.items) |i, *name, *mod_time| {
             const c_name: [*c]u8 = @constCast(name.ptr);
             const new_mod_time = ray.GetFileModTime(c_name);
             if (new_mod_time > mod_time.*) {
@@ -217,27 +235,31 @@ pub fn main() !void {
 
     // Initialize ray
     ray.SetConfigFlags(ray.FLAG_WINDOW_RESIZABLE);
-    // if (builtin.mode != .Debug) {
-    //     ray.SetTraceLogLevel(ray.LOG_NONE);
-    // }
+    if (builtin.mode != std.builtin.OptimizeMode.Debug) {
+        ray.SetTraceLogLevel(ray.LOG_NONE);
+    }
     ray.InitWindow(0, 0, "pixel edit");
     defer ray.CloseWindow();
+    if (builtin.mode != std.builtin.OptimizeMode.Debug) {
+        ray.SetExitKey(0);
+    }
     const monitor = ray.GetCurrentMonitor();
     const screen_width = ray.GetMonitorWidth(monitor);
     const screen_height = ray.GetMonitorHeight(monitor);
     ray.SetWindowMinSize(400, 400);
     ray.SetWindowMaxSize(screen_width, screen_height);
-    var textures = try Textures.init(allocator, &[_][]const u8{
-        "assets/icon.png",
-        "assets/file_icon.png",
-        "assets/save_icon.png",
-        "assets/eraser_icon.png",
-        "assets/pencil_icon.png",
-        "assets/bucket_icon.png",
-        "assets/plus_icon.png",
-        "assets/minus_icon.png",
-        "assets/play_icon.png",
-    });
+    const assets = &[_][]const u8{
+        "icon.png",
+        "file_icon.png",
+        "save_icon.png",
+        "eraser_icon.png",
+        "pencil_icon.png",
+        "bucket_icon.png",
+        "plus_icon.png",
+        "minus_icon.png",
+        "play_icon.png",
+    };
+    var textures = try Textures.init(allocator, assets);
     defer textures.deinit();
 
     var camera = ray.Camera2D{
@@ -593,6 +615,21 @@ pub fn main() !void {
         //----------------------------------------------------------------------------------
     }
     ray.ShowCursor();
+}
+
+// Caller owns memory
+fn getAssetsPath(alloc: Allocator) ![]u8 {
+    if (std.os.getenv("USER")) |user| {
+        const buf = try alloc.alloc(u8, 100);
+        defer alloc.free(buf);
+        if (builtin.mode == std.builtin.OptimizeMode.Debug) {
+            const string = try std.fmt.bufPrintZ(buf, "assets", .{});
+            return alloc.dupe(u8, string);
+        }
+        const string = try std.fmt.bufPrintZ(buf, "/home/{s}/.config/pixel-edit/assets", .{user});
+        return alloc.dupe(u8, string);
+    }
+    @panic("USER not set");
 }
 
 fn drawStatusTextItems(buffer: *[]u8, ctx: *AppContext) !void {
