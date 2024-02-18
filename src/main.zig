@@ -1,3 +1,18 @@
+// Key Maps
+//
+// <C-c> - copy current frame
+// <C-v> - paste from clipboard on to current frame
+// <C-r> - reset current frame
+// <C-d> - removed current frame from list and place into clipboard
+// <C-i> - insert new frame
+// o + wheel - change opacity of current frame
+// r + wheel - change color of red
+// g + wheel - change color of green
+// b + wheel - change color of blue
+// a + wheel - change color of alpha
+// space - toggle between highlight top item for what at top of screen
+//         what ever is highlighted that is what the + and - buttons control
+//
 const std = @import("std");
 const builtin = @import("builtin");
 const Allocator = std.mem.Allocator;
@@ -36,8 +51,8 @@ const AppContext = struct {
     is_drawing: bool = false,
     mode: Mode = Mode.Draw,
     zoom_level: c_int = 10,
-    canvas_width: c_int = 64,
-    canvas_height: c_int = 64,
+    canvas_width: c_int = 16,
+    canvas_height: c_int = 32,
     last_pixel: Pixel = .{ .x = 0, .y = 0 },
     playing: bool = false,
     selected_option: usize = 0,
@@ -61,6 +76,7 @@ const CanvasManager = struct {
     alloc: Allocator,
     index: usize = 0,
     frames: std.ArrayList(Canvas),
+    clipboard: ?Canvas = null,
     opacity: u8 = 255,
     // TODO: layers will go here too
 
@@ -82,6 +98,9 @@ const CanvasManager = struct {
             frame.*.deinit();
         }
         self.frames.deinit();
+        if (self.clipboard) |*canvas| {
+            canvas.deinit();
+        }
     }
 
     pub fn current_frame(self: *const Self) c_int {
@@ -135,6 +154,46 @@ const CanvasManager = struct {
 
     pub fn get(self: *Self, pixel: Pixel) ray.Color {
         return if (self.frames.items[self.index].get(pixel)) |c| c.color else ray.BLANK;
+    }
+
+    pub fn copyToClipboard(self: *Self) !void {
+        if (self.clipboard) |*canvas| {
+            canvas.clearRetainingCapacity();
+        } else {
+            self.clipboard = Canvas.init(self.alloc);
+        }
+        if (self.clipboard) |*canvas| {
+            var it = self.getCurrent().iterator();
+            while (it.next()) |pixel| {
+                try canvas.put(pixel.key_ptr.*, pixel.value_ptr.*);
+            }
+        }
+    }
+
+    pub fn pasteFromClipboard(self: *Self) !void {
+        if (self.clipboard) |canvas| {
+            self.frames.items[self.index].deinit();
+            self.frames.items[self.index] = try canvas.clone();
+        }
+    }
+
+    pub fn deleteCurrentFrame(self: *Self) void {
+        const frame = self.frames.orderedRemove(self.index);
+        if (self.clipboard) |*canvas| {
+            canvas.deinit();
+            self.clipboard = null;
+        }
+        self.clipboard = frame;
+    }
+
+    pub fn insertFromClipboard(self: *Self) !void {
+        if (self.clipboard) |canvas| {
+            if (self.index + 1 >= self.frames.items.len) {
+                try self.frames.append(try canvas.clone());
+                return;
+            }
+            try self.frames.insert(self.index + 1, try canvas.clone());
+        }
     }
 };
 
@@ -387,6 +446,22 @@ pub fn main() !void {
             if (d < 0 and ctx.canvas.opacity > 0) {
                 ctx.canvas.opacity -= 1;
             }
+        }
+
+        if (is_ctrl_pressed and ray.IsKeyReleased(ray.KEY_C)) {
+            try ctx.canvas.copyToClipboard();
+        }
+
+        if (is_ctrl_pressed and ray.IsKeyReleased(ray.KEY_V)) {
+            try ctx.canvas.pasteFromClipboard();
+        }
+
+        if (is_ctrl_pressed and ray.IsKeyReleased(ray.KEY_D)) {
+            ctx.canvas.deleteCurrentFrame();
+        }
+
+        if (is_ctrl_pressed and ray.IsKeyReleased(ray.KEY_I)) {
+            try ctx.canvas.insertFromClipboard();
         }
 
         if (ray.IsKeyDown(ray.KEY_LEFT_SHIFT) and is_mouse_on_canvas) {
