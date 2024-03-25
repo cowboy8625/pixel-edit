@@ -52,7 +52,7 @@ const AppContext = struct {
     mode: Mode = Mode.Draw,
     zoom_level: c_int = 10,
     canvas_width: c_int = 16,
-    canvas_height: c_int = 32,
+    canvas_height: c_int = 16,
     last_pixel: Pixel = .{ .x = 0, .y = 0 },
     playing: bool = false,
     selected_option: usize = 0,
@@ -472,6 +472,20 @@ pub fn main() !void {
             const y = @divTrunc(grid_y, ctx.zoom_level);
             try bresenhamLine(ctx.last_pixel.x, ctx.last_pixel.y, x, y, &pixel_buffer);
             ctx.mode = Mode.DrawLine;
+        }
+
+        if (ray.IsMouseButtonReleased(ray.MOUSE_RIGHT_BUTTON)) {
+            // I need to pixel under the mouse curror
+            const pos = fix_point_to_grid(c_int, ctx.zoom_level, ray.GetScreenToWorld2D(ray.GetMousePosition(), camera));
+            const grid_x = pos.x - canvas_x;
+            const grid_y = pos.y - canvas_y;
+            const x = @divTrunc(grid_x, ctx.zoom_level);
+            const y = @divTrunc(grid_y, ctx.zoom_level);
+            const frame = ctx.canvas.getCurrent();
+            const color = frame.get(.{ .x = x, .y = y });
+            if (color) |c| {
+                try color_pallet.add(c.color);
+            }
         }
 
         if (ray.IsMouseButtonPressed(ray.MOUSE_LEFT_BUTTON)) {

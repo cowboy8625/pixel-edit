@@ -38,6 +38,13 @@ pub const ColorPallet = struct {
         self.colors.deinit();
     }
 
+    pub fn add(self: *Self, color: ray.Color) !void {
+        for (self.colors.items) |c| {
+            if (c.r == color.r and c.g == color.g and c.b == color.b and c.a == color.a) return;
+        }
+        try self.colors.append(color);
+    }
+
     pub fn width(self: *Self) f32 {
         const w = @min(self.colors.items.len, 2) * self.cell_size;
         return @floatFromInt(w);
