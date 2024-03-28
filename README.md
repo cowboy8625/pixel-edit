@@ -7,4 +7,10 @@
 - dependencies: [raylib](https://github.com/raysan5/raylib)
 - built with version `0.12.0-dev.1859+27d4bf753`
 
-once raylib is installed and zig is installed just do `zig build run`
+```shell
+git clone https://github.com/cowboy8625/pixel-edit
+cd pixel-edit
+git checkout remastered
+git submodule update --init --recursive
+zig build run
+```
