@@ -11,6 +11,9 @@ const Command = @import("Command.zig");
 const Context = @import("Context.zig");
 const Cursor = @import("Cursor.zig");
 
+// Drawing imports
+const drawing = @import("drawing/status_bar.zig");
+
 test {
     _ = @import("keymapper.zig");
     _ = @import("keyboard.zig");
@@ -32,8 +35,8 @@ pub fn main() !void {
     defer key_queue.deinit();
     var context = try Context.init(allocator);
     defer context.deinit();
-    var text_buffer = try allocator.alloc(u8, 1024);
-    defer allocator.free(text_buffer);
+    // var text_buffer = try allocator.alloc(u8, 1024);
+    // defer allocator.free(text_buffer);
     var keymap = try KeyMapper.init(allocator);
     defer keymap.deinit();
 
@@ -49,37 +52,28 @@ pub fn main() !void {
             keypress = rl.GetKeyPressed();
         }
 
-        if (key_queue.items.len > 0 and is_dirty) {
-            const length = keyboard.to_string(&key_queue, &text_buffer);
-            if (keymap.get("text", "normal", text_buffer[0..length])) |cmd| {
+        if (keymap.is_possible_combination(
+            "text",
+            "normal",
+            key_queue.items,
+        )) {
+            // const length = keyboard.to_string(&key_queue, &text_buffer);
+            if (keymap.get("text", "normal", key_queue.items)) |cmd| {
                 cmd.action(&context);
                 key_queue.clearRetainingCapacity();
             }
-            is_dirty = false;
+        } else {
+            key_queue.clearRetainingCapacity();
         }
 
         rl.BeginDrawing();
         rl.ClearBackground(rl.Color.darkGray());
         defer rl.EndDrawing();
         draw_cursor(context.cursor);
+        drawing.draw_status_bar();
     }
 }
 
 pub fn draw_cursor(cursor: *Cursor) void {
     rl.DrawRectangleV(cursor.get_pos(), cursor.size, rl.Color.rayWhite());
 }
-
-// test "to_string" {
-//     var keys = std.ArrayList(rl.KeyboardKey).init(std.testing.allocator);
-//     defer keys.deinit();
-//     try keys.append(rl.KeyboardKey.LEFT_CONTROL);
-//     try keys.append(rl.KeyboardKey.C);
-//
-//     var out = try std.testing.allocator.alloc(u8, 10);
-//     defer std.testing.allocator.free(out);
-//
-//     try keyboard.to_string(&keys, &out);
-//     const found: []const u8 = out[0..9];
-//     print("'{s}'\n", .{found});
-//     try std.testing.expectEqualStrings("<ctrlL-c>", found);
-// }

@@ -54,6 +54,21 @@ pub fn to_string(keys: *std.ArrayList(rl.KeyboardKey), out: *[]u8) usize {
     return ip;
 }
 
+// test "to_string" {
+//     var keys = std.ArrayList(rl.KeyboardKey).init(std.testing.allocator);
+//     defer keys.deinit();
+//     try keys.append(rl.KeyboardKey.LEFT_CONTROL);
+//     try keys.append(rl.KeyboardKey.C);
+//
+//     var out = try std.testing.allocator.alloc(u8, 10);
+//     defer std.testing.allocator.free(out);
+//
+//     try keyboard.to_string(&keys, &out);
+//     const found: []const u8 = out[0..9];
+//     print("'{s}'\n", .{found});
+//     try std.testing.expectEqualStrings("<ctrlL-c>", found);
+// }
+
 pub fn get_string_value_of_key(key: rl.KeyboardKey) []const u8 {
     return switch (key) {
         .NULL => "NULL", // Key: NULL, used for no key pressed

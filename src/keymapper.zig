@@ -5,10 +5,74 @@ const testing = std.testing;
 const mode = @import("mode.zig");
 const commands = @import("commands.zig");
 const Command = @import("Command.zig");
-
-const KeyMap = std.StringHashMap(Command);
-const StateMap = std.StringHashMap(KeyMap);
+const StateMap = std.StringHashMap(TrieKeyMap);
 const ModeMap = std.StringHashMap(StateMap);
+fn build_text_command_state(alloc: Allocator) !StateMap {
+    var key_map = TrieKeyMap.init(alloc);
+    try key_map.insert(
+        &[_]rl.KeyboardKey{.J},
+        Command{
+            .name = "cursor_down",
+            .action = &commands.cursor_down,
+        },
+    );
+    try key_map.insert(
+        &[_]rl.KeyboardKey{.DOWN},
+        Command{
+            .name = "cursor_down",
+            .action = &commands.cursor_down,
+        },
+    );
+
+    try key_map.insert(
+        &[_]rl.KeyboardKey{.UP},
+        Command{
+            .name = "cursor_up",
+            .action = &commands.cursor_up,
+        },
+    );
+    try key_map.insert(
+        &[_]rl.KeyboardKey{.K},
+        Command{
+            .name = "cursor_up",
+            .action = &commands.cursor_up,
+        },
+    );
+
+    try key_map.insert(
+        &[_]rl.KeyboardKey{.H},
+        Command{
+            .name = "cursor_left",
+            .action = &commands.cursor_left,
+        },
+    );
+    try key_map.insert(
+        &[_]rl.KeyboardKey{.LEFT},
+        Command{
+            .name = "cursor_left",
+            .action = &commands.cursor_left,
+        },
+    );
+
+    try key_map.insert(
+        &[_]rl.KeyboardKey{.L},
+        Command{
+            .name = "cursor_right",
+            .action = &commands.cursor_right,
+        },
+    );
+    try key_map.insert(
+        &[_]rl.KeyboardKey{.RIGHT},
+        Command{
+            .name = "cursor_right",
+            .action = &commands.cursor_right,
+        },
+    );
+    var normal_state = StateMap.init(alloc);
+    try normal_state.put("normal", key_map);
+    return normal_state;
+}
+
 pub const KeyMapper = struct {
     alloc: Allocator,
     modes: ModeMap,
@@ -16,15 +80,8 @@ pub const KeyMapper = struct {
     const Self = @This();
 
     pub fn init(alloc: Allocator) !Self {
-        var key_map = KeyMap.init(alloc);
-        try key_map.put("j", Command{ .name = "cursor_down", .action = &commands.cursor_down });
-        try key_map.put("<down>", Command{ .name = "cursor_down", .action = &commands.cursor_down });
-        try key_map.put("k", Command{ .name = "cursor_up", .action = &commands.cursor_up });
-        try key_map.put("<up>", Command{ .name = "cursor_up", .action = &commands.cursor_up });
-        var normal_state = StateMap.init(alloc);
-        try normal_state.put("normal", key_map);
         var modes = ModeMap.init(alloc);
-        try modes.put("text", normal_state);
+        try modes.put("text", try build_text_command_state(alloc));
         return .{ .alloc = alloc, .modes = modes };
     }
 
@@ -40,19 +97,37 @@ pub const KeyMapper = struct {
         self.modes.deinit();
     }
 
-    // pub fn get(self: Self, major_mode: mode.MajorMode, state: mode.State, keys: []const u8) ?Command {
-    pub fn get(self: Self, major_mode: []const u8, state: []const u8, keys: []const u8) ?Command {
+    pub fn get(
+        self: Self,
+        major_mode: []const u8,
+        state: []const u8,
+        keys: []const rl.KeyboardKey,
+    ) ?Command {
         if (self.modes.get(major_mode)) |state_map| {
             if (state_map.get(state)) |key_map| {
-                return key_map.get(keys) orelse null;
+                if (key_map.get(keys)) |cmd| {
+                    return cmd;
+                }
             }
         }
         return null;
     }
 
-    // pub fn is_possible_combination(self: Self, major_mode: []const u8, state: []const u8, keys: []const u8) bool {
-    //
-    // }
+    pub fn is_possible_combination(
+        self: Self,
+        major_mode: []const u8,
+        state: []const u8,
+        keys: []const rl.KeyboardKey,
+    ) bool {
+        if (self.modes.get(major_mode)) |state_map| {
+            if (state_map.get(state)) |key_map| {
+                if (key_map.is_possible_combination(keys)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 };
 
 const TrieKeyMap = struct {
@@ -100,7 +175,7 @@ const TrieKeyMap = struct {
             try self.children.append(node);
         }
 
-        fn is_possible_combination(self: *Node, keys: []const rl.KeyboardKey) bool {
+        fn is_possible_combination(self: Node, keys: []const rl.KeyboardKey) bool {
             if (self.key) |key| {
                 if (key != keys[0]) {
                     return false;
@@ -165,7 +240,10 @@ const TrieKeyMap = struct {
         try self.branch.append(branch);
     }
 
-    pub fn is_possible_combination(self: *Self, keys: []const rl.KeyboardKey) bool {
+    pub fn is_possible_combination(self: Self, keys: []const rl.KeyboardKey) bool {
+        if (keys.len == 0) {
+            return false;
+        }
         for (self.branch.items) |node| {
             if (node.is_possible_combination(keys)) {
                 return true;
@@ -174,7 +252,10 @@ const TrieKeyMap = struct {
         return false;
     }
 
-    pub fn get(self: *Self, keys: []const rl.KeyboardKey) ?Command {
+    pub fn get(self: Self, keys: []const rl.KeyboardKey) ?Command {
+        if (keys.len == 0) {
+            return null;
+        }
         for (self.branch.items) |node| {
             if (node.get(keys)) |cmd| {
                 return cmd;

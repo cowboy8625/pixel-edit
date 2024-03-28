@@ -7,3 +7,11 @@ pub fn cursor_up(ctx: *Context) void {
 pub fn cursor_down(ctx: *Context) void {
     ctx.cursor.cursor_down();
 }
+
+pub fn cursor_left(ctx: *Context) void {
+    ctx.cursor.cursor_left();
+}
+
+pub fn cursor_right(ctx: *Context) void {
+    ctx.cursor.cursor_right();
+}
