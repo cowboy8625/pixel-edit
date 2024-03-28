@@ -67,14 +67,16 @@ const TrieKeyMap = struct {
         key: ?rl.KeyboardKey = null,
         command: ?Command = null,
 
-        pub fn init(alloc: Allocator) Self {
-            return .{
+        fn init(alloc: Allocator) !*Node {
+            const self = try alloc.create(Node);
+            self.* = .{
                 .alloc = alloc,
                 .children = std.ArrayList(*Node).init(alloc),
             };
+            return self;
         }
 
-        pub fn deinit(self: *Self) void {
+        fn deinit(self: *Node) void {
             for (self.children.items) |child| {
                 child.deinit();
             }
@@ -82,29 +84,59 @@ const TrieKeyMap = struct {
             self.alloc.destroy(self);
         }
 
-        pub fn insert(self: *Self, keys: []const rl.KeyboardKey, command: Command) !void {
+        fn insert(self: *Node, keys: []const rl.KeyboardKey, command: Command) !void {
             if (keys.len == 1) {
                 self.command = command;
                 self.key = keys[0];
                 return;
             }
-            if (keys.len > 0) {
-                return;
-            }
             self.key = keys[0];
             for (self.children.items) |child| {
-                try child.insert(keys[1..], command);
+                try child.*.insert(keys[1..], command);
             }
-            const node = try self.alloc.create(Node);
-            errdefer self.alloc.destroy(node);
-            node.* = Node.init(self.alloc);
+            const node = try Node.init(self.alloc);
+            errdefer node.*.deinit();
             try node.*.insert(keys[1..], command);
             try self.children.append(node);
         }
 
-        // pub fn get(self: *Self, keys: []const rl.KeyboardKey) ?rl.KeyboardKey {
-        //
-        // }
+        fn is_possible_combination(self: *Node, keys: []const rl.KeyboardKey) bool {
+            if (self.key) |key| {
+                if (key != keys[0]) {
+                    return false;
+                }
+            }
+
+            if (self.command) |_| if (keys.len == 1) {
+                return true;
+            };
+
+            for (self.children.items) |child| {
+                if (child.is_possible_combination(keys[1..])) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        fn get(self: *Node, keys: []const rl.KeyboardKey) ?Command {
+            if (self.key) |key| {
+                if (key != keys[0]) {
+                    return null;
+                }
+            }
+
+            if (self.command) |cmd| if (keys.len == 1) {
+                return cmd;
+            };
+
+            for (self.children.items) |child| {
+                if (child.get(keys[1..])) |cmd| {
+                    return cmd;
+                }
+            }
+            return null;
+        }
     };
 
     pub fn init(alloc: Allocator) Self {
@@ -115,22 +147,40 @@ const TrieKeyMap = struct {
     }
 
     pub fn deinit(self: *Self) void {
-        for (self.nodes.items) |node| {
+        for (self.branch.items) |node| {
             node.deinit();
         }
-        self.nodes.deinit();
+        self.branch.deinit();
     }
 
     pub fn insert(self: *Self, keys: []const rl.KeyboardKey, command: Command) !void {
         for (self.branch.items) |node| {
-            if (node.key == keys[0]) {
-                try node.*.insert(keys[1..], command);
-            }
+            if (node.key) |key| if (key == keys[0]) {
+                try node.insert(keys, command);
+            };
         }
         const branch = try Self.Node.init(self.alloc);
-        errdefer branch.deinit();
+        errdefer branch.*.deinit();
         try branch.*.insert(keys, command);
         try self.branch.append(branch);
+    }
+
+    pub fn is_possible_combination(self: *Self, keys: []const rl.KeyboardKey) bool {
+        for (self.branch.items) |node| {
+            if (node.is_possible_combination(keys)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    pub fn get(self: *Self, keys: []const rl.KeyboardKey) ?Command {
+        for (self.branch.items) |node| {
+            if (node.get(keys)) |cmd| {
+                return cmd;
+            }
+        }
+        return null;
     }
 };
 
@@ -138,7 +188,16 @@ test "insert into TrieKeyMap" {
     var trie = TrieKeyMap.init(std.testing.allocator);
     defer trie.deinit();
     const command = Command{ .name = "cursor_up", .action = &commands.cursor_up };
-    try trie.insert(&[_]rl.KeyboardKey{ rl.KeyboardKey.LEFT_CONTROL, rl.KeyboardKey.C }, command);
-    std.testing.expect(trie.is_possible_combination(&[_]rl.KeyboardKey{ rl.KeyboardKey.LEFT_CONTROL, rl.KeyboardKey.C }));
-    std.testing.expect(false);
+    try trie.insert(&[_]rl.KeyboardKey{ .LEFT_CONTROL, .C }, command);
+    const result = trie.is_possible_combination(&[_]rl.KeyboardKey{ .LEFT_CONTROL, .C });
+    try std.testing.expect(result);
+}
+
+test "get command from TrieKeyMap" {
+    var trie = TrieKeyMap.init(std.testing.allocator);
+    defer trie.deinit();
+    const command = Command{ .name = "cursor_up", .action = &commands.cursor_up };
+    try trie.insert(&[_]rl.KeyboardKey{ .LEFT_CONTROL, .C }, command);
+    const result = trie.get(&[_]rl.KeyboardKey{ .LEFT_CONTROL, .C });
+    try std.testing.expectEqualDeep(command, result.?);
 }
