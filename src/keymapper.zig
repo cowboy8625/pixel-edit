@@ -7,6 +7,8 @@ const commands = @import("commands.zig");
 const Command = @import("Command.zig");
 const StateMap = std.StringHashMap(TrieKeyMap);
 const ModeMap = std.StringHashMap(StateMap);
+
+/// Builds mapping for major mode `text` and state `normal`
 fn build_text_command_state(alloc: Allocator) !StateMap {
     var key_map = TrieKeyMap.init(alloc);
     try key_map.insert(
@@ -69,7 +71,7 @@ fn build_text_command_state(alloc: Allocator) !StateMap {
         },
     );
     var normal_state = StateMap.init(alloc);
-    try normal_state.put("normal", key_map);
+    try normal_state.put(@tagName(mode.State.Normal), key_map);
     return normal_state;
 }
 
@@ -81,7 +83,7 @@ pub const KeyMapper = struct {
 
     pub fn init(alloc: Allocator) !Self {
         var modes = ModeMap.init(alloc);
-        try modes.put("text", try build_text_command_state(alloc));
+        try modes.put(@tagName(mode.MajorMode.Text), try build_text_command_state(alloc));
         return .{ .alloc = alloc, .modes = modes };
     }
 
@@ -99,12 +101,12 @@ pub const KeyMapper = struct {
 
     pub fn get(
         self: Self,
-        major_mode: []const u8,
-        state: []const u8,
+        major_mode: mode.MajorMode,
+        state: mode.State,
         keys: []const rl.KeyboardKey,
     ) ?Command {
-        if (self.modes.get(major_mode)) |state_map| {
-            if (state_map.get(state)) |key_map| {
+        if (self.modes.get(@tagName(major_mode))) |state_map| {
+            if (state_map.get(@tagName(state))) |key_map| {
                 if (key_map.get(keys)) |cmd| {
                     return cmd;
                 }
@@ -115,12 +117,12 @@ pub const KeyMapper = struct {
 
     pub fn is_possible_combination(
         self: Self,
-        major_mode: []const u8,
-        state: []const u8,
+        major_mode: mode.MajorMode,
+        state: mode.State,
         keys: []const rl.KeyboardKey,
     ) bool {
-        if (self.modes.get(major_mode)) |state_map| {
-            if (state_map.get(state)) |key_map| {
+        if (self.modes.get(@tagName(major_mode))) |state_map| {
+            if (state_map.get(@tagName(state))) |key_map| {
                 if (key_map.is_possible_combination(keys)) {
                     return true;
                 }

@@ -1,4 +1,6 @@
 const std = @import("std");
+const ziglua = @import("ziglua");
+const Lua = ziglua.Lua;
 const print = std.debug.print;
 const Allocator = std.mem.Allocator;
 const rl = @import("raylib_zig");
@@ -24,6 +26,14 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
+    var lua = try Lua.init(allocator);
+    defer lua.deinit();
+    lua.openLibs();
+    Lua.doFile(&lua, "init.lua") catch {
+        print("{s}\n", .{lua.toString(-1) catch unreachable});
+        lua.pop(1);
+    };
+
     const screen_width = 800;
     const screen_height = 600;
     rl.InitWindow(screen_width, screen_height, "raylib zig template");
@@ -35,15 +45,14 @@ pub fn main() !void {
     defer key_queue.deinit();
     var context = try Context.init(allocator);
     defer context.deinit();
-    // var text_buffer = try allocator.alloc(u8, 1024);
-    // defer allocator.free(text_buffer);
+    var text_buffer = try allocator.alloc(u8, 1024);
+    defer allocator.free(text_buffer);
     var keymap = try KeyMapper.init(allocator);
     defer keymap.deinit();
 
     rl.SetTargetFPS(60);
     var is_dirty = false;
 
-    print("{}: {}\n", .{ major_mode, state });
     while (!rl.WindowShouldClose()) {
         var keypress = rl.GetKeyPressed();
         while (keypress) |key| {
@@ -53,12 +62,12 @@ pub fn main() !void {
         }
 
         if (keymap.is_possible_combination(
-            "text",
-            "normal",
+            major_mode,
+            state,
             key_queue.items,
         )) {
             // const length = keyboard.to_string(&key_queue, &text_buffer);
-            if (keymap.get("text", "normal", key_queue.items)) |cmd| {
+            if (keymap.get(major_mode, state, key_queue.items)) |cmd| {
                 cmd.action(&context);
                 key_queue.clearRetainingCapacity();
             }
@@ -70,7 +79,7 @@ pub fn main() !void {
         rl.ClearBackground(rl.Color.darkGray());
         defer rl.EndDrawing();
         draw_cursor(context.cursor);
-        drawing.draw_status_bar();
+        try drawing.draw_status_bar(state, context.cursor.pos.as(i32), &text_buffer);
     }
 }
 

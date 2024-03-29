@@ -1,10 +1,17 @@
 .{
-    .name = "pixel-edit",
+    .name = "zmacs",
     .version = "0.0.0",
     .dependencies = .{
-        .nfd = .{
-            .url = "https://github.com/ArtemisX64/nfd.zig/archive/refs/tags/0.1.1.tar.gz",
-            .hash = "12206ba65e37f89f23c006e7f1323ff88263bccb38d39c1d08048d404c2d1f86fdf8",
+        // .nfd = .{
+        //     .url = "https://github.com/ArtemisX64/nfd.zig/archive/refs/tags/0.1.1.tar.gz",
+        //     .hash = "12206ba65e37f89f23c006e7f1323ff88263bccb38d39c1d08048d404c2d1f86fdf8",
+        // },
+        .ziglua = .{
+            .url = "https://github.com/natecraddock/ziglua/archive/41a110981cf016465f72208c3f1732fd4c92a694.tar.gz",
+            .hash = "122079a0dd43f5b26a584f2cde6c2580de775ed5e1b48d80e9946eef3edc4a510a04",
+        },
+        .raylib_zig = .{
+            .path = "./raylib_zig",
         },
     },
 
