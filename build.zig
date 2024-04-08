@@ -22,12 +22,6 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const ziglua = b.dependency("ziglua", .{
-        .target = target,
-        .optimize = optimize,
-    });
-    exe.root_module.addImport("ziglua", ziglua.module("ziglua"));
-
     const raylib_zig = b.addModule("raylib_zig", .{
         .root_source_file = .{ .path = "raylib_zig/src/root.zig" },
     });
@@ -63,6 +57,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
+    exe_unit_tests.root_module.addImport("raylib_zig", raylib_zig);
 
     const run_exe_unit_tests = b.addRunArtifact(exe_unit_tests);
 

@@ -1,11 +1,13 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const Cursor = @import("Cursor.zig");
+const modes = @import("mode.zig");
 
 const Self = @This();
 
 alloc: Allocator,
 cursor: *Cursor,
+mode: modes.Mode = .Normal,
 
 pub fn init(alloc: Allocator) !Self {
     const cursor = try alloc.create(Cursor);

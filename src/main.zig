@@ -1,11 +1,9 @@
 const std = @import("std");
 const ziglua = @import("ziglua");
-const Lua = ziglua.Lua;
 const print = std.debug.print;
 const Allocator = std.mem.Allocator;
 const rl = @import("raylib_zig");
 const cast = rl.utils.cast;
-const modes = @import("mode.zig");
 const keyboard = @import("keyboard.zig");
 const keymapper = @import("keymapper.zig");
 const KeyMapper = keymapper.KeyMapper;
@@ -14,11 +12,13 @@ const Context = @import("Context.zig");
 const Cursor = @import("Cursor.zig");
 
 // Drawing imports
-const drawing = @import("drawing/status_bar.zig");
+const drawing = @import("drawing/mod.zig");
 
 test {
+    _ = @import("raylib_zig");
     _ = @import("keymapper.zig");
     _ = @import("keyboard.zig");
+    _ = @import("Window.zig");
 }
 
 pub fn main() !void {
@@ -26,21 +26,11 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var lua = try Lua.init(allocator);
-    defer lua.deinit();
-    lua.openLibs();
-    Lua.doFile(&lua, "init.lua") catch {
-        print("{s}\n", .{lua.toString(-1) catch unreachable});
-        lua.pop(1);
-    };
-
     const screen_width = 800;
     const screen_height = 600;
     rl.InitWindow(screen_width, screen_height, "raylib zig template");
     defer rl.CloseWindow();
 
-    const major_mode = modes.MajorMode.Text;
-    const state = modes.State.Normal;
     var key_queue = std.ArrayList(rl.KeyboardKey).init(allocator);
     defer key_queue.deinit();
     var context = try Context.init(allocator);
@@ -54,6 +44,17 @@ pub fn main() !void {
     var is_dirty = false;
 
     while (!rl.WindowShouldClose()) {
+        // var keypress = rl.GetCharPressed();
+        // while (keypress != 0) {
+        //     print("{d}\n", .{keypress});
+        //     // const c = cast(u8, keypress);
+        //     // if (std.ascii.isPrint(c)) {
+        //     //     print("{c}\n", .{c});
+        //     // } else {
+        //     //     print("{d}\n", .{keypress});
+        //     // }
+        //     keypress = rl.GetCharPressed();
+        // }
         var keypress = rl.GetKeyPressed();
         while (keypress) |key| {
             try key_queue.append(key);
@@ -62,12 +63,11 @@ pub fn main() !void {
         }
 
         if (keymap.is_possible_combination(
-            major_mode,
-            state,
+            context.mode,
             key_queue.items,
         )) {
             // const length = keyboard.to_string(&key_queue, &text_buffer);
-            if (keymap.get(major_mode, state, key_queue.items)) |cmd| {
+            if (keymap.get(context.mode, key_queue.items)) |cmd| {
                 cmd.action(&context);
                 key_queue.clearRetainingCapacity();
             }
@@ -78,11 +78,33 @@ pub fn main() !void {
         rl.BeginDrawing();
         rl.ClearBackground(rl.Color.darkGray());
         defer rl.EndDrawing();
-        draw_cursor(context.cursor);
-        try drawing.draw_status_bar(state, context.cursor.pos.as(i32), &text_buffer);
+        try draw(&context, &text_buffer);
     }
+}
+
+fn draw(ctx: *Context, text_buffer: *[]u8) !void {
+    switch (ctx.mode) {
+        .Command => try draw_command_mode(ctx, text_buffer),
+        .Normal => try draw_normal_mode(ctx, text_buffer),
+        else => {},
+    }
+    try drawing.draw_status_bar(ctx, text_buffer);
+}
+
+fn major_mode_pixel_edit_draw(ctx: *Context, text_buffer: *[]u8) !void {
+    _ = text_buffer;
+    _ = ctx;
 }
 
 pub fn draw_cursor(cursor: *Cursor) void {
     rl.DrawRectangleV(cursor.get_pos(), cursor.size, rl.Color.rayWhite());
+}
+pub fn draw_command_mode(ctx: *Context, text_buffer: *[]u8) !void {
+    drawing.draw_command_bar();
+    _ = ctx;
+    _ = text_buffer;
+}
+pub fn draw_normal_mode(ctx: *Context, text_buffer: *[]u8) !void {
+    draw_cursor(ctx.cursor);
+    _ = text_buffer;
 }

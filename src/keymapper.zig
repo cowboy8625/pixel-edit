@@ -2,15 +2,12 @@ const std = @import("std");
 const rl = @import("raylib_zig");
 const Allocator = std.mem.Allocator;
 const testing = std.testing;
-const mode = @import("mode.zig");
+const Mode = @import("mode.zig").Mode;
 const commands = @import("commands.zig");
 const Command = @import("Command.zig");
-const StateMap = std.StringHashMap(TrieKeyMap);
-const ModeMap = std.StringHashMap(StateMap);
 
 /// Builds mapping for major mode `text` and state `normal`
-fn build_text_command_state(alloc: Allocator) !StateMap {
-    var key_map = TrieKeyMap.init(alloc);
+fn build_normal_mode(key_map: *TrieKeyMap) !void {
     try key_map.insert(
         &[_]rl.KeyboardKey{.J},
         Command{
@@ -70,11 +67,27 @@ fn build_text_command_state(alloc: Allocator) !StateMap {
             .action = &commands.cursor_right,
         },
     );
-    var normal_state = StateMap.init(alloc);
-    try normal_state.put(@tagName(mode.State.Normal), key_map);
-    return normal_state;
+    try key_map.insert(
+        &[_]rl.KeyboardKey{.SEMICOLON},
+        Command{
+            .name = "change_mode_to_command",
+            .action = &commands.change_mode_to_command,
+        },
+    );
 }
 
+/// Builds mapping for major mode `text` and state `command`
+fn build_command_mode(key_map: *TrieKeyMap) !void {
+    try key_map.insert(
+        &[_]rl.KeyboardKey{.SEMICOLON},
+        Command{
+            .name = "change_mode_to_normal",
+            .action = &commands.change_mode_to_normal,
+        },
+    );
+}
+
+const ModeMap = std.EnumArray(Mode, TrieKeyMap);
 pub const KeyMapper = struct {
     alloc: Allocator,
     modes: ModeMap,
@@ -82,51 +95,43 @@ pub const KeyMapper = struct {
     const Self = @This();
 
     pub fn init(alloc: Allocator) !Self {
-        var modes = ModeMap.init(alloc);
-        try modes.put(@tagName(mode.MajorMode.Text), try build_text_command_state(alloc));
-        return .{ .alloc = alloc, .modes = modes };
+        var normal_keys = TrieKeyMap.init(alloc);
+        try build_normal_mode(&normal_keys);
+        var command_keys = TrieKeyMap.init(alloc);
+        try build_command_mode(&command_keys);
+        return .{ .alloc = alloc, .modes = ModeMap.init(.{
+            .Normal = normal_keys,
+            .Command = command_keys,
+            .Visual = TrieKeyMap.init(alloc),
+            .Insert = TrieKeyMap.init(alloc),
+        }) };
     }
 
     pub fn deinit(self: *Self) void {
-        var modes_iter = self.modes.valueIterator();
-        while (modes_iter.next()) |state| {
-            var state_iter = state.valueIterator();
-            while (state_iter.next()) |keys| {
-                keys.deinit();
-            }
-            state.deinit();
+        var modes_iter = self.modes.iterator();
+        while (modes_iter.next()) |m| {
+            m.value.deinit();
         }
-        self.modes.deinit();
     }
 
     pub fn get(
         self: Self,
-        major_mode: mode.MajorMode,
-        state: mode.State,
+        mode: Mode,
         keys: []const rl.KeyboardKey,
     ) ?Command {
-        if (self.modes.get(@tagName(major_mode))) |state_map| {
-            if (state_map.get(@tagName(state))) |key_map| {
-                if (key_map.get(keys)) |cmd| {
-                    return cmd;
-                }
-            }
+        if (self.modes.get(mode).get(keys)) |cmd| {
+            return cmd;
         }
         return null;
     }
 
     pub fn is_possible_combination(
         self: Self,
-        major_mode: mode.MajorMode,
-        state: mode.State,
+        mode: Mode,
         keys: []const rl.KeyboardKey,
     ) bool {
-        if (self.modes.get(@tagName(major_mode))) |state_map| {
-            if (state_map.get(@tagName(state))) |key_map| {
-                if (key_map.is_possible_combination(keys)) {
-                    return true;
-                }
-            }
+        if (self.modes.get(mode).is_possible_combination(keys)) {
+            return true;
         }
         return false;
     }

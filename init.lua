@@ -1,1 +1,4 @@
-print("hello from the init file")
+rect(100, 100, 30, 50)
+rect(10, 10, 30, 50)
+rect(300, 300, 50, 30)
+rect(100, 10, 10, 30)
