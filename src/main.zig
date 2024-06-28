@@ -33,7 +33,7 @@ pub fn main() !void {
 
     var key_queue = std.ArrayList(rl.KeyboardKey).init(allocator);
     defer key_queue.deinit();
-    var context = try Context.init(allocator);
+    var context = try Context.init(allocator, screen_width, screen_height);
     defer context.deinit();
     var text_buffer = try allocator.alloc(u8, 1024);
     defer allocator.free(text_buffer);
@@ -44,17 +44,6 @@ pub fn main() !void {
     var is_dirty = false;
 
     while (!rl.WindowShouldClose()) {
-        // var keypress = rl.GetCharPressed();
-        // while (keypress != 0) {
-        //     print("{d}\n", .{keypress});
-        //     // const c = cast(u8, keypress);
-        //     // if (std.ascii.isPrint(c)) {
-        //     //     print("{c}\n", .{c});
-        //     // } else {
-        //     //     print("{d}\n", .{keypress});
-        //     // }
-        //     keypress = rl.GetCharPressed();
-        // }
         var keypress = rl.GetKeyPressed();
         while (keypress) |key| {
             try key_queue.append(key);
@@ -83,9 +72,11 @@ pub fn main() !void {
 }
 
 fn draw(ctx: *Context, text_buffer: *[]u8) !void {
+    drawing.draw_canvas(ctx);
     switch (ctx.mode) {
         .Command => try draw_command_mode(ctx, text_buffer),
         .Normal => try draw_normal_mode(ctx, text_buffer),
+        .Insert => try draw_insert_mode(ctx, text_buffer),
         else => {},
     }
     try drawing.draw_status_bar(ctx, text_buffer);
@@ -97,7 +88,7 @@ fn major_mode_pixel_edit_draw(ctx: *Context, text_buffer: *[]u8) !void {
 }
 
 pub fn draw_cursor(cursor: *Cursor) void {
-    rl.DrawRectangleV(cursor.get_pos(), cursor.size, rl.Color.rayWhite());
+    rl.DrawRectangleV(cursor.get_pos(), cursor.size, cursor.color);
 }
 pub fn draw_command_mode(ctx: *Context, text_buffer: *[]u8) !void {
     drawing.draw_command_bar();
@@ -105,6 +96,11 @@ pub fn draw_command_mode(ctx: *Context, text_buffer: *[]u8) !void {
     _ = text_buffer;
 }
 pub fn draw_normal_mode(ctx: *Context, text_buffer: *[]u8) !void {
+    draw_cursor(ctx.cursor);
+    _ = text_buffer;
+}
+
+pub fn draw_insert_mode(ctx: *Context, text_buffer: *[]u8) !void {
     draw_cursor(ctx.cursor);
     _ = text_buffer;
 }

@@ -12,7 +12,7 @@ pub fn init() Self {
     return .{
         .pos = rl.Vector2(f32).init(10, 10),
         .size = rl.Vector2(f32).init(10, 10),
-        .color = rl.Color.rayWhite(),
+        .color = rl.Color.black(),
     };
 }
 pub fn get_pos(self: *Self) rl.Vector2(f32) {

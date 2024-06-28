@@ -74,6 +74,14 @@ fn build_normal_mode(key_map: *TrieKeyMap) !void {
             .action = &commands.change_mode_to_command,
         },
     );
+
+    try key_map.insert(
+        &[_]rl.KeyboardKey{.I},
+        Command{
+            .name = "change_mode_to_insert",
+            .action = &commands.change_mode_to_insert,
+        },
+    );
 }
 
 /// Builds mapping for major mode `text` and state `command`
@@ -83,6 +91,76 @@ fn build_command_mode(key_map: *TrieKeyMap) !void {
         Command{
             .name = "change_mode_to_normal",
             .action = &commands.change_mode_to_normal,
+        },
+    );
+}
+
+fn build_insert_mode(key_map: *TrieKeyMap) !void {
+    try key_map.insert(
+        &[_]rl.KeyboardKey{.ESCAPE},
+        Command{
+            .name = "change_mode_to_normal",
+            .action = &commands.change_mode_to_normal,
+        },
+    );
+
+    try key_map.insert(
+        &[_]rl.KeyboardKey{.J},
+        Command{
+            .name = "draw_cursor_down",
+            .action = &commands.draw_cursor_down,
+        },
+    );
+    try key_map.insert(
+        &[_]rl.KeyboardKey{.DOWN},
+        Command{
+            .name = "draw_cursor_down",
+            .action = &commands.draw_cursor_down,
+        },
+    );
+
+    try key_map.insert(
+        &[_]rl.KeyboardKey{.UP},
+        Command{
+            .name = "draw_cursor_up",
+            .action = &commands.draw_cursor_up,
+        },
+    );
+    try key_map.insert(
+        &[_]rl.KeyboardKey{.K},
+        Command{
+            .name = "draw_cursor_up",
+            .action = &commands.draw_cursor_up,
+        },
+    );
+
+    try key_map.insert(
+        &[_]rl.KeyboardKey{.H},
+        Command{
+            .name = "draw_cursor_left",
+            .action = &commands.draw_cursor_left,
+        },
+    );
+    try key_map.insert(
+        &[_]rl.KeyboardKey{.LEFT},
+        Command{
+            .name = "draw_cursor_left",
+            .action = &commands.draw_cursor_left,
+        },
+    );
+
+    try key_map.insert(
+        &[_]rl.KeyboardKey{.L},
+        Command{
+            .name = "draw_cursor_right",
+            .action = &commands.draw_cursor_right,
+        },
+    );
+    try key_map.insert(
+        &[_]rl.KeyboardKey{.RIGHT},
+        Command{
+            .name = "draw_cursor_right",
+            .action = &commands.draw_cursor_right,
         },
     );
 }
@@ -99,11 +177,13 @@ pub const KeyMapper = struct {
         try build_normal_mode(&normal_keys);
         var command_keys = TrieKeyMap.init(alloc);
         try build_command_mode(&command_keys);
+        var insert_keys = TrieKeyMap.init(alloc);
+        try build_insert_mode(&insert_keys);
         return .{ .alloc = alloc, .modes = ModeMap.init(.{
             .Normal = normal_keys,
             .Command = command_keys,
             .Visual = TrieKeyMap.init(alloc),
-            .Insert = TrieKeyMap.init(alloc),
+            .Insert = insert_keys,
         }) };
     }
 
