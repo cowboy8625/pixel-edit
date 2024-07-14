@@ -93,6 +93,13 @@ fn build_command_mode(key_map: *TrieKeyMap) !void {
             .action = &commands.change_mode_to_normal,
         },
     );
+    try key_map.insert(
+        &[_]rl.KeyboardKey{.NULL},
+        Command{
+            .name = "insert_char",
+            .action = &commands.insert_char,
+        },
+    );
 }
 
 fn build_insert_mode(key_map: *TrieKeyMap) !void {
@@ -159,7 +166,7 @@ fn build_insert_mode(key_map: *TrieKeyMap) !void {
     try key_map.insert(
         &[_]rl.KeyboardKey{.RIGHT},
         Command{
-            .name = "draw_cursor_right",
+            .name = "cursor_right",
             .action = &commands.draw_cursor_right,
         },
     );
@@ -265,7 +272,9 @@ const TrieKeyMap = struct {
         fn is_possible_combination(self: Node, keys: []const rl.KeyboardKey) bool {
             if (self.key) |key| {
                 if (key != keys[0]) {
-                    return false;
+                    if (key != .NULL) {
+                        return false;
+                    }
                 }
             }
 
@@ -284,7 +293,9 @@ const TrieKeyMap = struct {
         fn get(self: *Node, keys: []const rl.KeyboardKey) ?Command {
             if (self.key) |key| {
                 if (key != keys[0]) {
-                    return null;
+                    if (key != .NULL) {
+                        return null;
+                    }
                 }
             }
 
@@ -351,6 +362,16 @@ const TrieKeyMap = struct {
         return null;
     }
 };
+test "trigger on any key if key value is set to NULL" {
+    var trie = TrieKeyMap.init(std.testing.allocator);
+    defer trie.deinit();
+    const command = Command{ .name = "cursor_up", .action = &commands.cursor_up };
+    try trie.insert(&[_]rl.KeyboardKey{.NULL}, command);
+    const result = trie.is_possible_combination(&[_]rl.KeyboardKey{.C});
+    try std.testing.expect(result);
+    const c = trie.get(&[_]rl.KeyboardKey{.C});
+    try std.testing.expectEqualDeep(command, c.?);
+}
 
 test "insert into TrieKeyMap" {
     var trie = TrieKeyMap.init(std.testing.allocator);

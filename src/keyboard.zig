@@ -6,50 +6,8 @@ const State = enum { Open, Closed };
 /// places result in out buffer and returns the new length
 pub fn to_string(keys: *std.ArrayList(rl.KeyboardKey), out: *[]u8) usize {
     var ip: usize = 0;
-    var ctrl: ?rl.KeyboardKey = null;
-    var state: State = .Closed;
     for (keys.items) |key| {
-        const str = get_string_value_of_key(key);
-        if (str.len > 1 and ctrl == null and state == .Closed) {
-            ctrl = key;
-            state = .Open;
-            out.*[ip] = '<';
-            ip += 1;
-            for (str[0 .. str.len - 1]) |c| {
-                out.*[ip] = c;
-                ip += 1;
-            }
-        } else if (str.len == 1 and ctrl != null and state == .Open) {
-            out.*[ip] = '-';
-            ip += 1;
-            out.*[ip] = str[0];
-            ip += 1;
-            out.*[ip] = '>';
-            ip += 1;
-            ctrl = null;
-            state = .Closed;
-        } else if (str.len == 1 and ctrl != null and state == .Closed) {
-            const ctrl_str = get_string_value_of_key(ctrl.?);
-            out.*[ip] = '<';
-            ip += 1;
-            for (ctrl_str) |c| {
-                out.*[ip] = c;
-                ip += 1;
-            }
-            out.*[ip] = '-';
-            ip += 1;
-            out.*[ip] = str[0];
-            ip += 1;
-        } else {
-            out.*[ip] = str[0];
-            ip += 1;
-        }
-        // .Released => if (str.len > 1 and ctrl != null and key == ctrl.?) {
-        //     ctrl = null;
-        //     out.*[ip] = '>';
-        //     ip += 1;
-        //     state = .Closed;
-        // },
+        ip += get_string_value_of_key(key, ip, out);
     }
     return ip;
 }
@@ -69,9 +27,9 @@ pub fn to_string(keys: *std.ArrayList(rl.KeyboardKey), out: *[]u8) usize {
 //     try std.testing.expectEqualStrings("<ctrlL-c>", found);
 // }
 
-pub fn get_string_value_of_key(key: rl.KeyboardKey) []const u8 {
-    return switch (key) {
-        .NULL => "NULL", // Key: NULL, used for no key pressed
+pub fn get_string_value_of_key(key: rl.KeyboardKey, buf: []u8) ![]const u8 {
+    const value = switch (key) {
+        .NULL => "<NULL>", // Key: NULL, used for no key pressed
         // Alphanumeric keys
         .APOSTROPHE => "'", // Key: '
         .COMMA => ",", // Key: ,
@@ -121,47 +79,47 @@ pub fn get_string_value_of_key(key: rl.KeyboardKey) []const u8 {
         .RIGHT_BRACKET => "]", // Key: ]
         .GRAVE => "`", // Key: `
         // Function keys
-        .SPACE => "space", // Key: Space
-        .ESCAPE => "esc", // Key: Esc
-        .ENTER => "enter", // Key: Enter
-        .TAB => "tab", // Key: Tab
-        .BACKSPACE => "backspace", // Key: Backspace
-        .INSERT => "ins", // Key: Ins
-        .DELETE => "del", // Key: Del
-        .RIGHT => "right", // Key: Cursor right
-        .LEFT => "left", // Key: Cursor left
-        .DOWN => "down", // Key: Cursor down
-        .UP => "up", // Key: Cursor up
-        .PAGE_UP => "pageUp", // Key: Page up
-        .PAGE_DOWN => "pageDown", // Key: Page down
-        .HOME => "home", // Key: Home
-        .END => "end", // Key: End
-        .CAPS_LOCK => "capsLock", // Key: Caps lock
-        .SCROLL_LOCK => "scrollDown", // Key: Scroll down
-        .NUM_LOCK => "numLock", // Key: Num lock
-        .PRINT_SCREEN => "screenPrint", // Key: Print screen
-        .PAUSE => "pause", // Key: Pause
-        .F1 => "F1", // Key: F1
-        .F2 => "F2", // Key: F2
-        .F3 => "F3", // Key: F3
-        .F4 => "F4", // Key: F4
-        .F5 => "F5", // Key: F5
-        .F6 => "F6", // Key: F6
-        .F7 => "F7", // Key: F7
-        .F8 => "F8", // Key: F8
-        .F9 => "F9", // Key: F9
-        .F10 => "F10", // Key: F10
-        .F11 => "F11", // Key: F11
-        .F12 => "F12", // Key: F12
-        .LEFT_SHIFT => "shiftL", // Key: Shift left
-        .LEFT_CONTROL => "ctrlL", // Key: Control left
-        .LEFT_ALT => "altL", // Key: Alt left
-        .LEFT_SUPER => "superL", // Key: Super left
-        .RIGHT_SHIFT => "shiftR", // Key: Shift right
-        .RIGHT_CONTROL => "ctrlR", // Key: Control right
-        .RIGHT_ALT => "altR", // Key: Alt right
-        .RIGHT_SUPER => "superR", // Key: Super right
-        .KB_MENU => "menu", // Key: KB menu
+        .SPACE => "<space>", // Key: Space
+        .ESCAPE => "<esc>", // Key: Esc
+        .ENTER => "<enter>", // Key: Enter
+        .TAB => "<tab>", // Key: Tab
+        .BACKSPACE => "<backspace>", // Key: Backspace
+        .INSERT => "<insert>", // Key: Ins
+        .DELETE => "<delete>", // Key: Del
+        .RIGHT => "<right>", // Key: Cursor right
+        .LEFT => "<left>", // Key: Cursor left
+        .DOWN => "<down>", // Key: Cursor down
+        .UP => "<up>", // Key: Cursor up
+        .PAGE_UP => "<pageUp>", // Key: Page up
+        .PAGE_DOWN => "<pageDown>", // Key: Page down
+        .HOME => "<home>", // Key: Home
+        .END => "<end>", // Key: End
+        .CAPS_LOCK => "<capsLock>", // Key: Caps lock
+        .SCROLL_LOCK => "<scrollDown>", // Key: Scroll down
+        .NUM_LOCK => "<numLock>", // Key: Num lock
+        .PRINT_SCREEN => "<screenPrint>", // Key: Print screen
+        .PAUSE => "<pause>", // Key: Pause
+        .F1 => "<F1>", // Key: F1
+        .F2 => "<F2>", // Key: F2
+        .F3 => "<F3>", // Key: F3
+        .F4 => "<F4>", // Key: F4
+        .F5 => "<F5>", // Key: F5
+        .F6 => "<F6>", // Key: F6
+        .F7 => "<F7>", // Key: F7
+        .F8 => "<F8>", // Key: F8
+        .F9 => "<F9>", // Key: F9
+        .F10 => "<F10>", // Key: F10
+        .F11 => "<F11>", // Key: F11
+        .F12 => "<F12>", // Key: F12
+        .LEFT_SHIFT => "<shiftL>", // Key: Shift left
+        .LEFT_CONTROL => "<leftCtrl>", // Key: Control left
+        .LEFT_ALT => "<leftAlt>", // Key: Alt left
+        .LEFT_SUPER => "<leftSuper>", // Key: Super left
+        .RIGHT_SHIFT => "<rightShift>", // Key: Shift right
+        .RIGHT_CONTROL => "<rightCtrl>", // Key: Control right
+        .RIGHT_ALT => "<rightAlt>", // Key: Alt right
+        .RIGHT_SUPER => "<rightSuper>", // Key: Super right
+        .KB_MENU => "<menu>", // Key: KB menu
         // Keypad keys
         .KP_0 => "0", // Key: Keypad 0
         .KP_1 => "1", // Key: Keypad 1
@@ -178,12 +136,13 @@ pub fn get_string_value_of_key(key: rl.KeyboardKey) []const u8 {
         .KP_MULTIPLY => "*", // Key: Keypad *
         .KP_SUBTRACT => "-", // Key: Keypad -
         .KP_ADD => "+", // Key: Keypad +
-        .KP_ENTER => "kpenter", // Key: Keypad Enter
+        .KP_ENTER => "<kpenter>", // Key: Keypad Enter
         .KP_EQUAL => "=", // Key: Keypad =
         // Android key buttons
-        .BACK => "androidBack", // Key: Android back button
-        .MENU => "androidMenu", // Key: Android menu button
-        .VOLUME_UP => "androidVolumeUp", // Key: Android volume up button
-        .VOLUME_DOWN => "androidVolumeDown", // Key: Android volume down button
+        .BACK => "<androidBack>", // Key: Android back button
+        .MENU => "<androidMenu>", // Key: Android menu button
+        .VOLUME_UP => "<androidVolumeUp>", // Key: Android volume up button
+        .VOLUME_DOWN => "<androidVolumeDown>", // Key: Android volume down button
     };
+    return try std.fmt.bufPrintZ(buf, "{s}", .{value});
 }
