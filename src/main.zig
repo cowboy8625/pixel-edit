@@ -41,8 +41,8 @@ pub fn main() !void {
 
     while (!rl.WindowShouldClose() and context.is_running) {
         var keypress = rl.GetKeyPressed();
-        while (keypress) |key| {
-            try context.key_queue.append(key);
+        if (keypress != .NULL) {
+            try context.key_queue.append(keypress);
             keypress = rl.GetKeyPressed();
         }
 
@@ -65,26 +65,13 @@ pub fn main() !void {
         defer rl.EndMode2D();
 
         context.canvas.draw(&context);
+        context.cursor.draw();
         switch (context.mode) {
             .Command => {
                 context.commandBar.draw(&context);
             },
-            .Normal => try draw_normal_mode(&context),
-            .Insert => try draw_insert_mode(&context),
             else => {},
         }
         try drawing.draw_status_bar(&context);
     }
-}
-
-pub fn draw_cursor(cursor: *Cursor) void {
-    rl.DrawRectangleV(cursor.get_pos(), cursor.size, cursor.color);
-}
-
-pub fn draw_normal_mode(ctx: *Context) !void {
-    draw_cursor(ctx.cursor);
-}
-
-pub fn draw_insert_mode(ctx: *Context) !void {
-    draw_cursor(ctx.cursor);
 }

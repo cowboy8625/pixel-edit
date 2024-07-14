@@ -68,7 +68,7 @@ fn build_normal_mode(key_map: *TrieKeyMap) !void {
         },
     );
     try key_map.insert(
-        &[_]rl.KeyboardKey{.SEMICOLON},
+        &[_]rl.KeyboardKey{.COLON},
         Command{
             .name = "change_mode_to_command",
             .action = &commands.change_mode_to_command,
@@ -87,7 +87,7 @@ fn build_normal_mode(key_map: *TrieKeyMap) !void {
 /// Builds mapping for major mode `text` and state `command`
 fn build_command_mode(key_map: *TrieKeyMap) !void {
     try key_map.insert(
-        &[_]rl.KeyboardKey{.SEMICOLON},
+        &[_]rl.KeyboardKey{.ESCAPE},
         Command{
             .name = "change_mode_to_normal",
             .action = &commands.change_mode_to_normal,

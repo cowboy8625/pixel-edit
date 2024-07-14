@@ -143,6 +143,8 @@ pub fn get_string_value_of_key(key: rl.KeyboardKey, buf: []u8) ![]const u8 {
         .MENU => "<androidMenu>", // Key: Android menu button
         .VOLUME_UP => "<androidVolumeUp>", // Key: Android volume up button
         .VOLUME_DOWN => "<androidVolumeDown>", // Key: Android volume down button
+        // Additional keys not included in raylib.h
+        .COLON => ":", // Key: :
     };
     return try std.fmt.bufPrintZ(buf, "{s}", .{value});
 }

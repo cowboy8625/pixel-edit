@@ -15,7 +15,7 @@ pub fn init() Self {
         .color = rl.Color.black(),
     };
 }
-pub fn get_pos(self: *Self) rl.Vector2(f32) {
+pub fn get_pos(self: *const Self) rl.Vector2(f32) {
     return self.pos.mul(self.size);
 }
 
@@ -33,4 +33,8 @@ pub fn cursor_left(self: *Self) void {
 
 pub fn cursor_right(self: *Self) void {
     self.pos.x += 1;
+}
+
+pub fn draw(self: *const Self) void {
+    rl.DrawRectangleV(self.get_pos(), self.size, self.color);
 }
