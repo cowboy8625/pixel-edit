@@ -60,8 +60,10 @@ pub fn main() !void {
         rl.BeginDrawing();
         rl.ClearBackground(rl.Color.darkGray());
         defer rl.EndDrawing();
+        rl.BeginMode2D(context.camera.*);
+        defer rl.EndMode2D();
 
-        drawing.draw_canvas(&context);
+        context.canvas.draw(&context);
         switch (context.mode) {
             .Command => {
                 context.commandBar.draw(&context);
@@ -74,30 +76,10 @@ pub fn main() !void {
     }
 }
 
-fn draw(ctx: *Context, text_buffer: *[]u8) !void {
-    drawing.draw_canvas(ctx);
-    switch (ctx.mode) {
-        .Command => try draw_command_mode(ctx, text_buffer),
-        .Normal => try draw_normal_mode(ctx, text_buffer),
-        .Insert => try draw_insert_mode(ctx, text_buffer),
-        else => {},
-    }
-    try drawing.draw_status_bar(ctx, text_buffer);
-}
-
-fn major_mode_pixel_edit_draw(ctx: *Context, text_buffer: *[]u8) !void {
-    _ = text_buffer;
-    _ = ctx;
-}
-
 pub fn draw_cursor(cursor: *Cursor) void {
     rl.DrawRectangleV(cursor.get_pos(), cursor.size, cursor.color);
 }
-pub fn draw_command_mode(ctx: *Context, text_buffer: *[]u8) !void {
-    drawing.draw_command_bar();
-    _ = ctx;
-    _ = text_buffer;
-}
+
 pub fn draw_normal_mode(ctx: *Context) !void {
     draw_cursor(ctx.cursor);
 }

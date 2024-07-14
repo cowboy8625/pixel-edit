@@ -14,6 +14,7 @@ alloc: Allocator,
 cursor: *Cursor,
 canvas: *Canvas,
 commandBar: *CommandBar,
+camera: *rl.Camera2D,
 scratch_buffer: []u8,
 scratch_index: usize = 0,
 key_queue: std.ArrayList(rl.KeyboardKey),
@@ -37,11 +38,21 @@ pub fn init(alloc: Allocator, width: u32, height: u32) !Self {
     errdefer alloc.free(buffer);
     @memset(buffer, 0);
 
+    const camera = try alloc.create(rl.Camera2D);
+    errdefer alloc.destroy(camera);
+    camera.* = .{
+        .offset = .{ .x = 0.0, .y = 0.0 },
+        .target = cursor.pos.asRaylibVector2(),
+        .rotation = 0.0,
+        .zoom = 1.0,
+    };
+
     return .{
         .alloc = alloc,
         .cursor = cursor,
         .canvas = canvas,
         .commandBar = commandBar,
+        .camera = camera,
         .scratch_buffer = buffer,
         .key_queue = std.ArrayList(rl.KeyboardKey).init(alloc),
     };
@@ -53,6 +64,7 @@ pub fn deinit(self: Self) void {
     self.alloc.destroy(self.canvas);
     self.commandBar.*.deinit();
     self.alloc.destroy(self.commandBar);
+    self.alloc.destroy(self.camera);
     self.alloc.free(self.scratch_buffer);
     self.key_queue.deinit();
 }

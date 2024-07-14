@@ -2,6 +2,7 @@ const std = @import("std");
 const rl = @import("raylib_zig");
 const keyboard = @import("keyboard.zig");
 const cast = rl.utils.cast;
+const commands = @import("commands.zig");
 const Context = @import("Context.zig");
 const Allocator = std.mem.Allocator;
 
@@ -52,6 +53,9 @@ pub fn execute(self: *Self, ctx: *Context) !void {
     }
     if (std.mem.eql(u8, self.text[0..self.index], "exit")) {
         ctx.is_running = false;
+    } else if (std.mem.eql(u8, self.text[0..self.index], "clear")) {
+        ctx.canvas.clear();
+        try commands.change_mode_to_normal(ctx);
     } else {
         self.message = try std.fmt.bufPrintZ(
             self.error_buf,
@@ -68,7 +72,7 @@ pub fn draw(self: *Self, _: *Context) void {
     const screen_height = rl.GetScreenHeight();
     const width = cast(f32, screen_width) * 0.9;
     const height = 40;
-    const pos: rl.Vector2(f32) = .{
+    var pos: rl.Vector2(f32) = .{
         .x = (cast(f32, screen_width) - width) / 2.0,
         .y = cast(f32, @divFloor((screen_height - height), 2)),
     };
@@ -76,6 +80,8 @@ pub fn draw(self: *Self, _: *Context) void {
 
     const size: rl.Vector2(f32) = .{ .x = width, .y = height };
     rl.DrawRectangleV(pos, size, rl.Color.black());
+
+    pos = pos.add(4);
 
     if (self.message) |message| {
         rl.DrawText(
