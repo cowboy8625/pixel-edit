@@ -6,6 +6,7 @@ const Canvas = @import("Canvas.zig");
 const CommandBar = @import("CommandBar.zig");
 const rl = @import("raylib_zig");
 const keyboard = @import("keyboard.zig");
+const cast = rl.utils.cast;
 
 const Self = @This();
 const BUFFER_SIZE = 256;
@@ -41,8 +42,11 @@ pub fn init(alloc: Allocator, width: u32, height: u32) !Self {
     const camera = try alloc.create(rl.Camera2D);
     errdefer alloc.destroy(camera);
     camera.* = .{
-        .offset = .{ .x = 0.0, .y = 0.0 },
-        .target = cursor.pos.asRaylibVector2(),
+        .offset = .{
+            .x = cast(f32, @divFloor(rl.GetScreenWidth(), 2)),
+            .y = cast(f32, @divFloor(rl.GetScreenHeight(), 2)),
+        },
+        .target = .{ .x = 0.0, .y = 0.0 },
         .rotation = 0.0,
         .zoom = 1.0,
     };

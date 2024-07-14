@@ -56,6 +56,7 @@ pub fn main() !void {
             }
         }
         context.key_queue.clearRetainingCapacity();
+        context.camera.*.target = context.cursor.get_pos().asRaylibVector2();
 
         rl.BeginDrawing();
         rl.ClearBackground(rl.Color.darkGray());
