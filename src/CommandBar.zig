@@ -51,23 +51,59 @@ pub fn execute(self: *Self, ctx: *Context) !void {
         self.index = 0;
         return;
     }
-    if (std.mem.eql(u8, self.text[0..self.index], "exit")) {
+    const command = self.text[0..self.index];
+    if (std.mem.startsWith(u8, command, "set")) {
+        var it = std.mem.split(u8, command, "=");
+        const first = it.next() orelse "";
+        if (std.mem.startsWith(u8, first, "set canvas-width")) {
+            const maybe_value = it.next() orelse "";
+            const value = std.fmt.parseInt(u32, maybe_value, 10) catch {
+                self.message = try std.fmt.bufPrintZ(
+                    self.error_buf,
+                    "`{s}` Error: canvas-width expected a number but found",
+                    .{
+                        maybe_value,
+                    },
+                );
+                return;
+            };
+            ctx.canvas.width = value * cast(u32, ctx.cursor.size.x);
+            self.clear();
+            try commands.change_mode_to_normal(ctx);
+        } else if (std.mem.startsWith(u8, command, "set canvas-height=")) {
+            const maybe_value = it.next() orelse "";
+            const value = std.fmt.parseInt(u32, maybe_value, 10) catch {
+                self.message = try std.fmt.bufPrintZ(
+                    self.error_buf,
+                    "Error: canvas-height expected a number but found `{s}`",
+                    .{
+                        maybe_value,
+                    },
+                );
+                return;
+            };
+            ctx.canvas.height = value * cast(u32, ctx.cursor.size.x);
+            self.clear();
+            try commands.change_mode_to_normal(ctx);
+        }
+    } else if (std.mem.eql(u8, command, "exit")) {
         ctx.is_running = false;
-    } else if (std.mem.eql(u8, self.text[0..self.index], "clear")) {
+    } else if (std.mem.eql(u8, command, "clear")) {
         ctx.canvas.clear();
+        self.clear();
         try commands.change_mode_to_normal(ctx);
     } else {
         self.message = try std.fmt.bufPrintZ(
             self.error_buf,
             "Error: `{s}` is not a valid command",
             .{
-                self.text[0..self.index],
+                command,
             },
         );
     }
 }
 
-pub fn draw(self: *Self, _: *Context) void {
+pub fn draw(self: *Self, ctx: *Context) void {
     const screen_width = rl.GetScreenWidth();
     const screen_height = rl.GetScreenHeight();
     const width = cast(f32, screen_width) * 0.9;
@@ -76,18 +112,19 @@ pub fn draw(self: *Self, _: *Context) void {
         .x = (cast(f32, screen_width) - width) / 2.0,
         .y = cast(f32, @divFloor((screen_height - height), 2)),
     };
+    pos = rl.GetScreenToWorld2D(pos, ctx.camera.*);
     const font_size = 35;
 
     const size: rl.Vector2(f32) = .{ .x = width, .y = height };
     rl.DrawRectangleV(pos, size, rl.Color.black());
 
-    pos = pos.add(4);
+    const pos0 = pos.add(4).as(i32);
 
     if (self.message) |message| {
         rl.DrawText(
             message,
-            pos.as(i32).x,
-            pos.as(i32).y,
+            pos0.x,
+            pos0.y,
             font_size,
             rl.Color.red(),
         );
@@ -97,9 +134,14 @@ pub fn draw(self: *Self, _: *Context) void {
     if (self.index == 0) return;
     rl.DrawText(
         self.text[0..self.index],
-        pos.as(i32).x,
-        pos.as(i32).y,
+        pos0.x,
+        pos0.y,
         font_size,
         rl.Color.white(),
     );
+}
+
+fn clear(self: *Self) void {
+    self.index = 0;
+    self.text[0] = 0;
 }

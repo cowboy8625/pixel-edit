@@ -4,41 +4,51 @@ const cast = rl.utils.cast;
 const Context = @import("Context.zig");
 
 pub fn cursor_up(ctx: *Context) !void {
+    const y = ctx.cursor.get_pos().as(u32).y;
+    if (y <= 0) return;
     ctx.cursor.cursor_up();
 }
 
 pub fn cursor_down(ctx: *Context) !void {
+    const y = ctx.cursor.get_pos().as(u32).y;
+    const bottom = ctx.canvas.height - cast(u32, ctx.cursor.size.y);
+    if (y >= bottom) return;
     ctx.cursor.cursor_down();
 }
 
 pub fn cursor_left(ctx: *Context) !void {
+    const x = ctx.cursor.get_pos().as(u32).x;
+    if (x <= 0) return;
     ctx.cursor.cursor_left();
 }
 
 pub fn cursor_right(ctx: *Context) !void {
+    const x = ctx.cursor.get_pos().as(u32).x;
+    const right = ctx.canvas.width - cast(u32, ctx.cursor.size.x);
+    if (x >= right) return;
     ctx.cursor.cursor_right();
 }
 
 pub fn draw_cursor_up(ctx: *Context) !void {
-    ctx.cursor.cursor_up();
+    try cursor_up(ctx);
     const color = ctx.cursor.color;
     try ctx.canvas.insert(ctx.cursor.pos.as(usize), color);
 }
 
 pub fn draw_cursor_down(ctx: *Context) !void {
-    ctx.cursor.cursor_down();
+    try cursor_down(ctx);
     const color = ctx.cursor.color;
     try ctx.canvas.insert(ctx.cursor.pos.as(usize), color);
 }
 
 pub fn draw_cursor_left(ctx: *Context) !void {
-    ctx.cursor.cursor_left();
+    try cursor_left(ctx);
     const color = ctx.cursor.color;
     try ctx.canvas.insert(ctx.cursor.pos.as(usize), color);
 }
 
 pub fn draw_cursor_right(ctx: *Context) !void {
-    ctx.cursor.cursor_right();
+    try cursor_right(ctx);
     const color = ctx.cursor.color;
     try ctx.canvas.insert(ctx.cursor.pos.as(usize), color);
 }
@@ -84,4 +94,8 @@ pub fn insert_char(ctx: *Context) !void {
 
 fn isControlKey(string: []const u8) bool {
     return string[0] == '<' and string[string.len - 1] == '>';
+}
+
+pub fn delete_pixel_under_cursor(ctx: *Context) !void {
+    ctx.canvas.remove(ctx.cursor.pos.as(usize));
 }

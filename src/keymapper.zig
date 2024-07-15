@@ -82,6 +82,14 @@ fn build_normal_mode(key_map: *TrieKeyMap) !void {
             .action = &commands.change_mode_to_insert,
         },
     );
+
+    try key_map.insert(
+        &[_]rl.KeyboardKey{.X},
+        Command{
+            .name = "delete_pixel_under_cursor",
+            .action = &commands.delete_pixel_under_cursor,
+        },
+    );
 }
 
 /// Builds mapping for major mode `text` and state `command`

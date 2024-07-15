@@ -35,6 +35,10 @@ pub fn insert(self: *Self, pos: rl.Vector2(usize), color: rl.Color) !void {
     try self.pixels.put(pos, color);
 }
 
+pub fn remove(self: *Self, pos: rl.Vector2(usize)) void {
+    _ = self.pixels.remove(pos);
+}
+
 fn drawBackground(self: *const Self) void {
     const pos = rl.Vector2(f32).init(0, 0);
     const size = rl.Vector2(u32).init(self.width, self.height).as(f32);

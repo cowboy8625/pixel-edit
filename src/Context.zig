@@ -4,6 +4,7 @@ const Cursor = @import("Cursor.zig");
 const modes = @import("mode.zig");
 const Canvas = @import("Canvas.zig");
 const CommandBar = @import("CommandBar.zig");
+const StatusBar = @import("StatusBar.zig");
 const rl = @import("raylib_zig");
 const keyboard = @import("keyboard.zig");
 const cast = rl.utils.cast;
@@ -15,6 +16,7 @@ alloc: Allocator,
 cursor: *Cursor,
 canvas: *Canvas,
 commandBar: *CommandBar,
+statusBar: *StatusBar,
 camera: *rl.Camera2D,
 scratch_buffer: []u8,
 scratch_index: usize = 0,
@@ -34,6 +36,10 @@ pub fn init(alloc: Allocator, width: u32, height: u32) !Self {
     const commandBar = try alloc.create(CommandBar);
     errdefer alloc.destroy(commandBar);
     commandBar.* = try CommandBar.init(alloc);
+
+    const statusBar = try alloc.create(StatusBar);
+    errdefer alloc.destroy(statusBar);
+    statusBar.* = StatusBar.default();
 
     const buffer = try alloc.alloc(u8, BUFFER_SIZE);
     errdefer alloc.free(buffer);
@@ -56,6 +62,7 @@ pub fn init(alloc: Allocator, width: u32, height: u32) !Self {
         .cursor = cursor,
         .canvas = canvas,
         .commandBar = commandBar,
+        .statusBar = statusBar,
         .camera = camera,
         .scratch_buffer = buffer,
         .key_queue = std.ArrayList(rl.KeyboardKey).init(alloc),
@@ -68,6 +75,7 @@ pub fn deinit(self: Self) void {
     self.alloc.destroy(self.canvas);
     self.commandBar.*.deinit();
     self.alloc.destroy(self.commandBar);
+    self.alloc.destroy(self.statusBar);
     self.alloc.destroy(self.camera);
     self.alloc.free(self.scratch_buffer);
     self.key_queue.deinit();
