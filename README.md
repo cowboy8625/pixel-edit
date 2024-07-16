@@ -5,7 +5,7 @@
 ### Building
 
 - dependencies: [raylib](https://github.com/raysan5/raylib)
-- built with version `0.12.0-dev.1859+27d4bf753`
+- built with version `0.13.0`
 
 ```shell
 git clone https://github.com/cowboy8625/pixel-edit
@@ -14,3 +14,11 @@ git checkout remastered
 git submodule update --init --recursive
 zig build run
 ```
+
+### TODO
+- [ ] add cursor to command bar
+- [ ] add move cursor in command bar <kbd>left</kbd> and <kbd>right</kbd>
+- [ ] add <kbd>up</kbd> and <kbd>down</kbd> in command bar to move through command history
+- [ ] <kbd>f</kbd> to use the fill command
+- [ ] use of mouse for drawing
+- [ ] command: num:num to jump cursor to location

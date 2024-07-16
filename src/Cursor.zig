@@ -2,6 +2,7 @@ const std = @import("std");
 const print = std.debug.print;
 const Allocator = std.mem.Allocator;
 const rl = @import("raylib_zig");
+const Context = @import("Context.zig");
 
 const Self = @This();
 
@@ -35,6 +36,17 @@ pub fn cursor_right(self: *Self) void {
     self.pos.x += 1;
 }
 
-pub fn draw(self: *const Self) void {
+pub fn draw(self: *const Self, ctx: *Context) void {
     rl.DrawRectangleV(self.get_pos(), self.size, self.color);
+    var color: rl.Color = undefined;
+    if (ctx.canvas.pixels.get(ctx.cursor.pos.as(usize))) |c| if (c.equals(rl.Color.black())) {
+        color = rl.Color.white();
+    } else {
+        color = rl.Color.black();
+    };
+    rl.DrawRectangleLinesV(
+        self.get_pos().as(i32).sub(1),
+        self.size.add(2).as(i32),
+        color,
+    );
 }

@@ -62,7 +62,7 @@ pub fn main() !void {
         defer rl.EndMode2D();
 
         context.canvas.draw(&context);
-        context.cursor.draw();
+        context.cursor.draw(&context);
         switch (context.mode) {
             .Command => {
                 context.commandBar.draw(&context);

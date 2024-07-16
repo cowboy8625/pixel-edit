@@ -12,6 +12,7 @@ text: []u8,
 error_buf: []u8,
 message: ?[]u8 = null,
 index: usize = 0,
+font_size: i32 = 35,
 alloc: Allocator,
 
 pub fn init(alloc: Allocator) !Self {
@@ -113,7 +114,6 @@ pub fn draw(self: *Self, ctx: *Context) void {
         .y = cast(f32, @divFloor((screen_height - height), 2)),
     };
     pos = rl.GetScreenToWorld2D(pos, ctx.camera.*);
-    const font_size = 35;
 
     const size: rl.Vector2(f32) = .{ .x = width, .y = height };
     rl.DrawRectangleV(pos, size, rl.Color.black());
@@ -125,18 +125,19 @@ pub fn draw(self: *Self, ctx: *Context) void {
             message,
             pos0.x,
             pos0.y,
-            font_size,
+            self.font_size,
             rl.Color.red(),
         );
         return;
     }
+    self.draw_cursor(pos);
 
     if (self.index == 0) return;
     rl.DrawText(
         self.text[0..self.index],
         pos0.x,
         pos0.y,
-        font_size,
+        self.font_size,
         rl.Color.white(),
     );
 }
@@ -144,4 +145,16 @@ pub fn draw(self: *Self, ctx: *Context) void {
 fn clear(self: *Self) void {
     self.index = 0;
     self.text[0] = 0;
+}
+
+fn draw_cursor(self: *const Self, pos: rl.Vector2(f32)) void {
+    var font_width: i32 = undefined;
+    if (self.index > 0) {
+        font_width = rl.MeasureText(self.text[0..self.index], self.font_size);
+    } else {
+        font_width = 0;
+    }
+    const p = pos.add(rl.Vector2(i32).init(font_width + 4, 0).as(f32));
+
+    rl.DrawRectangleV(p, .{ .x = 10, .y = 40 }, rl.Color.red());
 }
