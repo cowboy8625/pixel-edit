@@ -1,5 +1,5 @@
 const std = @import("std");
-const rl = @import("raylib_zig");
+const rl = @import("raylib");
 const Allocator = std.mem.Allocator;
 const testing = std.testing;
 const Mode = @import("mode.zig").Mode;

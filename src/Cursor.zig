@@ -1,7 +1,7 @@
 const std = @import("std");
 const print = std.debug.print;
 const Allocator = std.mem.Allocator;
-const rl = @import("raylib_zig");
+const rl = @import("raylib");
 const Context = @import("Context.zig");
 
 const Self = @This();

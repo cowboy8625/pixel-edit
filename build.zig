@@ -22,14 +22,17 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const raylib_zig = b.addModule("raylib_zig", .{
-        .root_source_file = b.path("raylib_zig/src/root.zig"),
+    const raylib_dep = b.dependency("raylib-zig", .{
+        .target = target,
+        .optimize = optimize,
     });
-    exe.root_module.addImport("raylib_zig", raylib_zig);
 
-    // nfd.install(exe);
-    exe.linkSystemLibrary("raylib");
-    exe.linkSystemLibrary("c");
+    const raylib = raylib_dep.module("raylib"); // main raylib module
+    const raygui = raylib_dep.module("raygui"); // raygui module
+    const raylib_artifact = raylib_dep.artifact("raylib"); // raylib C library
+    exe.linkLibrary(raylib_artifact);
+    exe.root_module.addImport("raylib", raylib);
+    exe.root_module.addImport("raygui", raygui);
 
     b.installArtifact(exe);
 
@@ -58,10 +61,9 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    exe_unit_tests.root_module.addImport("raylib_zig", raylib_zig);
-
-    exe_unit_tests.linkSystemLibrary("raylib");
-    exe_unit_tests.linkSystemLibrary("c");
+    exe_unit_tests.linkLibrary(raylib_artifact);
+    exe_unit_tests.root_module.addImport("raylib", raylib);
+    exe_unit_tests.root_module.addImport("raygui", raygui);
 
     const run_exe_unit_tests = b.addRunArtifact(exe_unit_tests);
 

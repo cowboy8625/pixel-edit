@@ -1,5 +1,5 @@
 const std = @import("std");
-const rl = @import("raylib_zig");
+const rl = @import("raylib");
 
 const State = enum { Open, Closed };
 

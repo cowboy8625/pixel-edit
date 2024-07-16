@@ -1,6 +1,6 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const rl = @import("raylib_zig");
+const rl = @import("raylib");
 const Context = @import("Context.zig");
 
 const Pixels = std.AutoHashMap(rl.Vector2(usize), rl.Color);

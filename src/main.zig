@@ -1,8 +1,8 @@
 const std = @import("std");
-const ziglua = @import("ziglua");
+// const ziglua = @import("ziglua");
 const print = std.debug.print;
 const Allocator = std.mem.Allocator;
-const rl = @import("raylib_zig");
+const rl = @import("raylib");
 const cast = rl.utils.cast;
 const keyboard = @import("keyboard.zig");
 const keymapper = @import("keymapper.zig");

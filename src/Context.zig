@@ -5,7 +5,7 @@ const modes = @import("mode.zig");
 const Canvas = @import("Canvas.zig");
 const CommandBar = @import("CommandBar.zig");
 const StatusBar = @import("StatusBar.zig");
-const rl = @import("raylib_zig");
+const rl = @import("raylib");
 const keyboard = @import("keyboard.zig");
 const cast = rl.utils.cast;
 

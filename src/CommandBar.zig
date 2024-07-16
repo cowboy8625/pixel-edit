@@ -1,5 +1,5 @@
 const std = @import("std");
-const rl = @import("raylib_zig");
+const rl = @import("raylib");
 const keyboard = @import("keyboard.zig");
 const cast = rl.utils.cast;
 const commands = @import("commands.zig");

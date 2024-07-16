@@ -1,5 +1,5 @@
 const std = @import("std");
-const rl = @import("raylib_zig");
+const rl = @import("raylib");
 const Cursor = @import("Cursor.zig");
 const Allocator = std.mem.Allocator;
 const Self = @This();
