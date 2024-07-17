@@ -100,3 +100,7 @@ fn isControlKey(string: []const u8) bool {
 pub fn delete_pixel_under_cursor(ctx: *Context) !void {
     ctx.canvas.remove(ctx.cursor.pos);
 }
+
+pub fn command_cursor_left(ctx: *Context) !void {
+    ctx.commandBar.cursor_left();
+}

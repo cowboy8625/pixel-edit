@@ -12,6 +12,7 @@ text: []u8,
 error_buf: []u8,
 message: ?[]u8 = null,
 index: usize = 0,
+cursor: usize = 0,
 font_size: i32 = 35,
 alloc: Allocator,
 
@@ -38,12 +39,26 @@ pub fn push(self: *Self, char: u8) void {
     self.text[self.index] = char;
     self.index += 1;
     self.text[self.index] = 0;
+    self.cursor += 1;
+}
+
+pub fn cursor_left(self: *Self) void {
+    if (self.cursor == 0) return;
+    self.cursor -= 1;
+}
+
+pub fn cursor_right(self: *Self) void {
+    if (self.cursor == self.index) return;
+    self.cursor += 1;
 }
 
 pub fn backspace(self: *Self) void {
-    if (self.index == 0) return;
+    if (self.cursor == 0) return;
+    self.cursor -= 1;
+    for (self.cursor..self.index) |i| {
+        self.text[i] = self.text[i + 1];
+    }
     self.index -= 1;
-    self.text[self.index] = 0;
 }
 
 pub fn execute(self: *Self, ctx: *Context) !void {
@@ -152,7 +167,7 @@ fn clear(self: *Self) void {
 fn draw_cursor(self: *const Self, pos: rl.Vector2) void {
     var font_width: i32 = undefined;
     if (self.index > 0) {
-        const ctext: [*c]u8 = @constCast(self.text[0..self.index].ptr);
+        const ctext: [*c]u8 = @constCast(self.text[0..self.cursor].ptr);
         font_width = rl.measureText(ctext, self.font_size);
     } else {
         font_width = 0;

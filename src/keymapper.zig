@@ -67,13 +67,13 @@ fn build_normal_mode(key_map: *TrieKeyMap) !void {
             .action = &commands.cursor_right,
         },
     );
-    // try key_map.insert(
-    //     &[_]rl.KeyboardKey{.COLON},
-    //     Command{
-    //         .name = "change_mode_to_command",
-    //         .action = &commands.change_mode_to_command,
-    //     },
-    // );
+    try key_map.insert(
+        &[_]rl.KeyboardKey{.key_semicolon},
+        Command{
+            .name = "change_mode_to_command",
+            .action = &commands.change_mode_to_command,
+        },
+    );
 
     try key_map.insert(
         &[_]rl.KeyboardKey{.key_i},
@@ -106,6 +106,22 @@ fn build_command_mode(key_map: *TrieKeyMap) !void {
         Command{
             .name = "insert_char",
             .action = &commands.insert_char,
+        },
+    );
+
+    try key_map.insert(
+        &[_]rl.KeyboardKey{.key_j},
+        Command{
+            .name = "cursor_down",
+            .action = &commands.cursor_down,
+        },
+    );
+
+    try key_map.insert(
+        &[_]rl.KeyboardKey{.key_left},
+        Command{
+            .name = "command_cursor_left",
+            .action = &commands.command_cursor_left,
         },
     );
 }
