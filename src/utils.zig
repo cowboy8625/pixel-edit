@@ -1,6 +1,5 @@
 const std = @import("std");
 const rl = @import("raylib");
-const Vector2 = @import("Vector2.zig").Vector2;
 
 pub fn genEnumFromStringArray(comptime args: []const []const u8) type {
     var decls = [_]std.builtin.Type.Declaration{};
@@ -33,4 +32,8 @@ pub fn cast(comptime T: type, item: anytype) T {
         .Int, .Float => return numberCast(@TypeOf(item), T, item),
         else => @compileError("Unsupported type"),
     }
+}
+
+pub fn vector2As(comptime T: type, vec: anytype) struct { x: T, y: T } {
+    return .{ .x = cast(T, vec.x), .y = cast(T, vec.y) };
 }

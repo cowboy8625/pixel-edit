@@ -55,7 +55,7 @@ pub fn Vector2(comptime T: type) type {
                     return .{ .x = self.x - other.x, .y = self.y - other.y };
                 },
                 T, comptime_int => {
-                    return .{ .x = self.x + other, .y = self.y + other };
+                    return .{ .x = self.x - other, .y = self.y - other };
                 },
                 else => @compileError("Unsupported type " ++ @typeName(@TypeOf(other))),
             }

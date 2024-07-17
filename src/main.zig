@@ -61,7 +61,7 @@ pub fn main() !void {
             }
         }
         context.key_queue.clearRetainingCapacity();
-        context.camera.*.target = context.cursor.get_pos().asRaylibVector2();
+        context.camera.*.target = context.cursor.get_pos();
 
         rl.beginDrawing();
         rl.clearBackground(rl.Color.dark_gray);
