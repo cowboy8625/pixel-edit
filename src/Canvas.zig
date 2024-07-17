@@ -1,9 +1,11 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const rl = @import("raylib");
+const cast = @import("utils.zig").cast;
+const Vector2 = @import("Vector2.zig").Vector2;
 const Context = @import("Context.zig");
 
-const Pixels = std.AutoHashMap(rl.Vector2(usize), rl.Color);
+const Pixels = std.AutoHashMap(Vector2(usize), rl.Color);
 
 const Self = @This();
 alloc: Allocator,
@@ -31,18 +33,21 @@ pub fn clear(self: *Self) void {
     self.pixels.clearRetainingCapacity();
 }
 
-pub fn insert(self: *Self, pos: rl.Vector2(usize), color: rl.Color) !void {
+pub fn insert(self: *Self, pos: Vector2(usize), color: rl.Color) !void {
     try self.pixels.put(pos, color);
 }
 
-pub fn remove(self: *Self, pos: rl.Vector2(usize)) void {
+pub fn remove(self: *Self, pos: Vector2(usize)) void {
     _ = self.pixels.remove(pos);
 }
 
 fn drawBackground(self: *const Self) void {
-    const pos = rl.Vector2(f32).init(0, 0);
-    const size = rl.Vector2(u32).init(self.width, self.height).as(f32);
-    rl.DrawRectangleV(pos, size, rl.Color.white());
+    const pos = .{ .x = 0, .y = 0 };
+    const size = .{
+        .x = cast(f32, self.width),
+        .y = cast(f32, self.height),
+    };
+    rl.drawRectangleV(pos, size, rl.Color.white);
 }
 
 pub fn draw(self: *const Self, ctx: *Context) void {
@@ -50,8 +55,8 @@ pub fn draw(self: *const Self, ctx: *Context) void {
     const size = ctx.cursor.size.as(usize);
     var iter = self.pixels.iterator();
     while (iter.next()) |entry| {
-        const pos = entry.key_ptr.*.mul(size).as(f32);
+        const pos = entry.key_ptr.*.mul(size).as(f32).asRaylibVector2();
         const color = entry.value_ptr.*;
-        rl.DrawRectangleV(pos, size.as(f32), color);
+        rl.drawRectangleV(pos, size.as(f32).asRaylibVector2(), color);
     }
 }

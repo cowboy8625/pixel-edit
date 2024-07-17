@@ -13,9 +13,17 @@ const Cursor = @import("Cursor.zig");
 const CommandBar = @import("CommandBar.zig");
 
 test {
-    _ = @import("raylib_zig");
+    _ = @import("Canvas.zig");
+    _ = @import("Command.zig");
+    _ = @import("CommandBar.zig");
+    _ = @import("Context.zig");
+    _ = @import("Cursor.zig");
+    _ = @import("StatusBar.zig");
+    // _ = @import("Window.zig");
+    _ = @import("commands.zig");
     _ = @import("keymapper.zig");
     _ = @import("keyboard.zig");
+    _ = @import("mode.zig");
 }
 
 pub fn main() !void {
@@ -25,22 +33,22 @@ pub fn main() !void {
 
     const screen_width = 800;
     const screen_height = 600;
-    rl.InitWindow(screen_width, screen_height, "Pixel Edit");
-    defer rl.CloseWindow();
-    rl.SetExitKey(rl.KeyboardKey.NULL);
+    rl.initWindow(screen_width, screen_height, "Pixel Edit");
+    defer rl.closeWindow();
+    rl.setExitKey(rl.KeyboardKey.key_null);
 
     var context = try Context.init(allocator, screen_width, screen_height);
     defer context.deinit();
     var keymap = try KeyMapper.init(allocator);
     defer keymap.deinit();
 
-    rl.SetTargetFPS(60);
+    rl.setTargetFPS(60);
 
-    while (!rl.WindowShouldClose() and context.is_running) {
-        var keypress = rl.GetKeyPressed();
-        if (keypress != .NULL) {
+    while (!rl.windowShouldClose() and context.is_running) {
+        var keypress = rl.getKeyPressed();
+        if (keypress != .key_null) {
             try context.key_queue.append(keypress);
-            keypress = rl.GetKeyPressed();
+            keypress = rl.getKeyPressed();
         }
 
         if (keymap.is_possible_combination(
@@ -55,11 +63,11 @@ pub fn main() !void {
         context.key_queue.clearRetainingCapacity();
         context.camera.*.target = context.cursor.get_pos().asRaylibVector2();
 
-        rl.BeginDrawing();
-        rl.ClearBackground(rl.Color.darkGray());
-        defer rl.EndDrawing();
-        rl.BeginMode2D(context.camera.*);
-        defer rl.EndMode2D();
+        rl.beginDrawing();
+        rl.clearBackground(rl.Color.dark_gray);
+        defer rl.endDrawing();
+        rl.beginMode2D(context.camera.*);
+        defer rl.endMode2D();
 
         context.canvas.draw(&context);
         context.cursor.draw(&context);

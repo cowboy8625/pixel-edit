@@ -9,14 +9,14 @@ const Command = @import("Command.zig");
 /// Builds mapping for major mode `text` and state `normal`
 fn build_normal_mode(key_map: *TrieKeyMap) !void {
     try key_map.insert(
-        &[_]rl.KeyboardKey{.J},
+        &[_]rl.KeyboardKey{.key_j},
         Command{
             .name = "cursor_down",
             .action = &commands.cursor_down,
         },
     );
     try key_map.insert(
-        &[_]rl.KeyboardKey{.DOWN},
+        &[_]rl.KeyboardKey{.key_down},
         Command{
             .name = "cursor_down",
             .action = &commands.cursor_down,
@@ -24,14 +24,14 @@ fn build_normal_mode(key_map: *TrieKeyMap) !void {
     );
 
     try key_map.insert(
-        &[_]rl.KeyboardKey{.UP},
+        &[_]rl.KeyboardKey{.key_up},
         Command{
             .name = "cursor_up",
             .action = &commands.cursor_up,
         },
     );
     try key_map.insert(
-        &[_]rl.KeyboardKey{.K},
+        &[_]rl.KeyboardKey{.key_k},
         Command{
             .name = "cursor_up",
             .action = &commands.cursor_up,
@@ -39,14 +39,14 @@ fn build_normal_mode(key_map: *TrieKeyMap) !void {
     );
 
     try key_map.insert(
-        &[_]rl.KeyboardKey{.H},
+        &[_]rl.KeyboardKey{.key_h},
         Command{
             .name = "cursor_left",
             .action = &commands.cursor_left,
         },
     );
     try key_map.insert(
-        &[_]rl.KeyboardKey{.LEFT},
+        &[_]rl.KeyboardKey{.key_left},
         Command{
             .name = "cursor_left",
             .action = &commands.cursor_left,
@@ -54,29 +54,29 @@ fn build_normal_mode(key_map: *TrieKeyMap) !void {
     );
 
     try key_map.insert(
-        &[_]rl.KeyboardKey{.L},
+        &[_]rl.KeyboardKey{.key_l},
         Command{
             .name = "cursor_right",
             .action = &commands.cursor_right,
         },
     );
     try key_map.insert(
-        &[_]rl.KeyboardKey{.RIGHT},
+        &[_]rl.KeyboardKey{.key_right},
         Command{
             .name = "cursor_right",
             .action = &commands.cursor_right,
         },
     );
-    try key_map.insert(
-        &[_]rl.KeyboardKey{.COLON},
-        Command{
-            .name = "change_mode_to_command",
-            .action = &commands.change_mode_to_command,
-        },
-    );
+    // try key_map.insert(
+    //     &[_]rl.KeyboardKey{.COLON},
+    //     Command{
+    //         .name = "change_mode_to_command",
+    //         .action = &commands.change_mode_to_command,
+    //     },
+    // );
 
     try key_map.insert(
-        &[_]rl.KeyboardKey{.I},
+        &[_]rl.KeyboardKey{.key_i},
         Command{
             .name = "change_mode_to_insert",
             .action = &commands.change_mode_to_insert,
@@ -84,7 +84,7 @@ fn build_normal_mode(key_map: *TrieKeyMap) !void {
     );
 
     try key_map.insert(
-        &[_]rl.KeyboardKey{.X},
+        &[_]rl.KeyboardKey{.key_x},
         Command{
             .name = "delete_pixel_under_cursor",
             .action = &commands.delete_pixel_under_cursor,
@@ -95,14 +95,14 @@ fn build_normal_mode(key_map: *TrieKeyMap) !void {
 /// Builds mapping for major mode `text` and state `command`
 fn build_command_mode(key_map: *TrieKeyMap) !void {
     try key_map.insert(
-        &[_]rl.KeyboardKey{.ESCAPE},
+        &[_]rl.KeyboardKey{.key_escape},
         Command{
             .name = "change_mode_to_normal",
             .action = &commands.change_mode_to_normal,
         },
     );
     try key_map.insert(
-        &[_]rl.KeyboardKey{.NULL},
+        &[_]rl.KeyboardKey{.key_null},
         Command{
             .name = "insert_char",
             .action = &commands.insert_char,
@@ -112,7 +112,7 @@ fn build_command_mode(key_map: *TrieKeyMap) !void {
 
 fn build_insert_mode(key_map: *TrieKeyMap) !void {
     try key_map.insert(
-        &[_]rl.KeyboardKey{.ESCAPE},
+        &[_]rl.KeyboardKey{.key_escape},
         Command{
             .name = "change_mode_to_normal",
             .action = &commands.change_mode_to_normal,
@@ -120,14 +120,14 @@ fn build_insert_mode(key_map: *TrieKeyMap) !void {
     );
 
     try key_map.insert(
-        &[_]rl.KeyboardKey{.J},
+        &[_]rl.KeyboardKey{.key_j},
         Command{
             .name = "draw_cursor_down",
             .action = &commands.draw_cursor_down,
         },
     );
     try key_map.insert(
-        &[_]rl.KeyboardKey{.DOWN},
+        &[_]rl.KeyboardKey{.key_down},
         Command{
             .name = "draw_cursor_down",
             .action = &commands.draw_cursor_down,
@@ -135,14 +135,14 @@ fn build_insert_mode(key_map: *TrieKeyMap) !void {
     );
 
     try key_map.insert(
-        &[_]rl.KeyboardKey{.UP},
+        &[_]rl.KeyboardKey{.key_up},
         Command{
             .name = "draw_cursor_up",
             .action = &commands.draw_cursor_up,
         },
     );
     try key_map.insert(
-        &[_]rl.KeyboardKey{.K},
+        &[_]rl.KeyboardKey{.key_k},
         Command{
             .name = "draw_cursor_up",
             .action = &commands.draw_cursor_up,
@@ -150,14 +150,14 @@ fn build_insert_mode(key_map: *TrieKeyMap) !void {
     );
 
     try key_map.insert(
-        &[_]rl.KeyboardKey{.H},
+        &[_]rl.KeyboardKey{.key_h},
         Command{
             .name = "draw_cursor_left",
             .action = &commands.draw_cursor_left,
         },
     );
     try key_map.insert(
-        &[_]rl.KeyboardKey{.LEFT},
+        &[_]rl.KeyboardKey{.key_left},
         Command{
             .name = "draw_cursor_left",
             .action = &commands.draw_cursor_left,
@@ -165,14 +165,14 @@ fn build_insert_mode(key_map: *TrieKeyMap) !void {
     );
 
     try key_map.insert(
-        &[_]rl.KeyboardKey{.L},
+        &[_]rl.KeyboardKey{.key_l},
         Command{
             .name = "draw_cursor_right",
             .action = &commands.draw_cursor_right,
         },
     );
     try key_map.insert(
-        &[_]rl.KeyboardKey{.RIGHT},
+        &[_]rl.KeyboardKey{.key_right},
         Command{
             .name = "cursor_right",
             .action = &commands.draw_cursor_right,
@@ -280,7 +280,7 @@ const TrieKeyMap = struct {
         fn is_possible_combination(self: Node, keys: []const rl.KeyboardKey) bool {
             if (self.key) |key| {
                 if (key != keys[0]) {
-                    if (key != .NULL) {
+                    if (key != .key_null) {
                         return false;
                     }
                 }
@@ -301,7 +301,7 @@ const TrieKeyMap = struct {
         fn get(self: *Node, keys: []const rl.KeyboardKey) ?Command {
             if (self.key) |key| {
                 if (key != keys[0]) {
-                    if (key != .NULL) {
+                    if (key != .key_null) {
                         return null;
                     }
                 }
@@ -374,8 +374,8 @@ test "trigger on any key if key value is set to NULL" {
     var trie = TrieKeyMap.init(std.testing.allocator);
     defer trie.deinit();
     const command = Command{ .name = "cursor_up", .action = &commands.cursor_up };
-    try trie.insert(&[_]rl.KeyboardKey{.NULL}, command);
-    const result = trie.is_possible_combination(&[_]rl.KeyboardKey{.C});
+    try trie.insert(&[_]rl.KeyboardKey{.key_null}, command);
+    const result = trie.is_possible_combination(&[_]rl.KeyboardKey{.key_c});
     try std.testing.expect(result);
     const c = trie.get(&[_]rl.KeyboardKey{.C});
     try std.testing.expectEqualDeep(command, c.?);
@@ -385,8 +385,8 @@ test "insert into TrieKeyMap" {
     var trie = TrieKeyMap.init(std.testing.allocator);
     defer trie.deinit();
     const command = Command{ .name = "cursor_up", .action = &commands.cursor_up };
-    try trie.insert(&[_]rl.KeyboardKey{ .LEFT_CONTROL, .C }, command);
-    const result = trie.is_possible_combination(&[_]rl.KeyboardKey{ .LEFT_CONTROL, .C });
+    try trie.insert(&[_]rl.KeyboardKey{ .key_left_control, .C }, command);
+    const result = trie.is_possible_combination(&[_]rl.KeyboardKey{ .key_left_control, .key_c });
     try std.testing.expect(result);
 }
 
@@ -394,7 +394,7 @@ test "get command from TrieKeyMap" {
     var trie = TrieKeyMap.init(std.testing.allocator);
     defer trie.deinit();
     const command = Command{ .name = "cursor_up", .action = &commands.cursor_up };
-    try trie.insert(&[_]rl.KeyboardKey{ .LEFT_CONTROL, .C }, command);
-    const result = trie.get(&[_]rl.KeyboardKey{ .LEFT_CONTROL, .C });
+    try trie.insert(&[_]rl.KeyboardKey{ .key_left_control, .key_c }, command);
+    const result = trie.get(&[_]rl.KeyboardKey{ .key_left_control, .key_c });
     try std.testing.expectEqualDeep(command, result.?);
 }

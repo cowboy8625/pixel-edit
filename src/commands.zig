@@ -1,6 +1,6 @@
 const std = @import("std");
 const rl = @import("raylib");
-const cast = rl.utils.cast;
+const cast = @import("utils.zig").cast;
 const Context = @import("Context.zig");
 
 pub fn cursor_up(ctx: *Context) !void {
@@ -72,17 +72,17 @@ pub fn insert_char(ctx: *Context) !void {
         const string = try ctx.getCurrentKeyPressedString();
         const key = ctx.getCurrentKeyPressed();
         switch (key.*) {
-            .SPACE => {
+            .key_space => {
                 ctx.commandBar.push(' ');
             },
-            .BACKSPACE => {
+            .key_backspace => {
                 ctx.commandBar.backspace();
             },
-            .ENTER => {
+            .key_enter => {
                 try ctx.commandBar.execute(ctx);
             },
             else => if (!isControlKey(string)) {
-                if (rl.IsKeyDown(rl.KeyboardKey.LEFT_SHIFT) or rl.IsKeyDown(rl.KeyboardKey.RIGHT_SHIFT)) {
+                if (rl.isKeyDown(rl.KeyboardKey.key_left_shift) or rl.isKeyDown(rl.KeyboardKey.key_right_shift)) {
                     ctx.commandBar.push(std.ascii.toUpper(string[0]));
                     return;
                 }

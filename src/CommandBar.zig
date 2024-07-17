@@ -1,7 +1,8 @@
 const std = @import("std");
 const rl = @import("raylib");
+const Vector2 = @import("Vector2.zig").Vector2;
 const keyboard = @import("keyboard.zig");
-const cast = rl.utils.cast;
+const cast = @import("utils.zig").cast;
 const commands = @import("commands.zig");
 const Context = @import("Context.zig");
 const Allocator = std.mem.Allocator;
@@ -105,40 +106,42 @@ pub fn execute(self: *Self, ctx: *Context) !void {
 }
 
 pub fn draw(self: *Self, ctx: *Context) void {
-    const screen_width = rl.GetScreenWidth();
-    const screen_height = rl.GetScreenHeight();
+    const screen_width = rl.getScreenWidth();
+    const screen_height = rl.getScreenHeight();
     const width = cast(f32, screen_width) * 0.9;
     const height = 40;
-    var pos: rl.Vector2(f32) = .{
+    var pos: rl.Vector2 = .{
         .x = (cast(f32, screen_width) - width) / 2.0,
         .y = cast(f32, @divFloor((screen_height - height), 2)),
     };
-    pos = rl.GetScreenToWorld2D(pos, ctx.camera.*);
+    pos = rl.getScreenToWorld2D(pos, ctx.camera.*);
 
-    const size: rl.Vector2(f32) = .{ .x = width, .y = height };
-    rl.DrawRectangleV(pos, size, rl.Color.black());
+    const size: rl.Vector2 = .{ .x = width, .y = height };
+    rl.drawRectangleV(pos, size, rl.Color.black);
 
-    const pos0 = pos.add(4).as(i32);
+    const pos0 = pos.addValue(4);
 
     if (self.message) |message| {
-        rl.DrawText(
-            message,
-            pos0.x,
-            pos0.y,
+        const ctext: [*c]u8 = @constCast(message.ptr);
+        rl.drawText(
+            ctext,
+            cast(i32, pos0.x),
+            cast(i32, pos0.y),
             self.font_size,
-            rl.Color.red(),
+            rl.Color.red,
         );
         return;
     }
     self.draw_cursor(pos);
 
     if (self.index == 0) return;
-    rl.DrawText(
-        self.text[0..self.index],
-        pos0.x,
-        pos0.y,
+    const ctext: [*c]u8 = @constCast(self.text[0..self.index].ptr);
+    rl.drawText(
+        ctext,
+        cast(i32, pos0.x),
+        cast(i32, pos0.y),
         self.font_size,
-        rl.Color.white(),
+        rl.Color.white,
     );
 }
 
@@ -147,14 +150,15 @@ fn clear(self: *Self) void {
     self.text[0] = 0;
 }
 
-fn draw_cursor(self: *const Self, pos: rl.Vector2(f32)) void {
+fn draw_cursor(self: *const Self, pos: rl.Vector2) void {
     var font_width: i32 = undefined;
     if (self.index > 0) {
-        font_width = rl.MeasureText(self.text[0..self.index], self.font_size);
+        const ctext: [*c]u8 = @constCast(self.text[0..self.index].ptr);
+        font_width = rl.measureText(ctext, self.font_size);
     } else {
         font_width = 0;
     }
-    const p = pos.add(rl.Vector2(i32).init(font_width + 4, 0).as(f32));
+    const p = pos.add(.{ .x = cast(f32, font_width) + 4, .y = 0 });
 
-    rl.DrawRectangleV(p, .{ .x = 10, .y = 40 }, rl.Color.red());
+    rl.drawRectangleV(p, .{ .x = 10, .y = 40 }, rl.Color.red);
 }
