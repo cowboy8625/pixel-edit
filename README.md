@@ -16,6 +16,8 @@ zig build run
 ```
 
 ### TODO
+- [ ] Fix Colon not being in the KeyboardKey enum
+- [ ] Try to use RayGui for the command bar
 - [ ] add cursor to command bar
 - [ ] add move cursor in command bar <kbd>left</kbd> and <kbd>right</kbd>
 - [ ] add <kbd>up</kbd> and <kbd>down</kbd> in command bar to move through command history
