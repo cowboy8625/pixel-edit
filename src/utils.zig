@@ -1,39 +1,46 @@
 const std = @import("std");
-const rl = @import("raylib");
-
-pub fn genEnumFromStringArray(comptime args: []const []const u8) type {
-    var decls = [_]std.builtin.Type.Declaration{};
-    var enumDecls: [args.len]std.builtin.Type.EnumField = undefined;
-    inline for (args, 0..) |field, i| {
-        enumDecls[i] = .{ .name = field ++ "", .value = i };
-    }
-
-    return @Type(.{
-        .Enum = .{
-            .tag_type = std.math.IntFittingRange(0, args.len - 1),
-            .fields = &enumDecls,
-            .decls = &decls,
-            .is_exhaustive = true,
-        },
-    });
-}
 
 pub fn numberCast(comptime T: type, comptime U: type, num: T) U {
     if (T == U) return num;
     return switch (@typeInfo(T)) {
         .Int => if (@typeInfo(U) == .Float) @as(U, @floatFromInt(num)) else @as(U, @intCast(num)),
         .Float => if (@typeInfo(U) == .Int) @as(U, @intFromFloat(num)) else @as(U, @floatCast(num)),
+        .ComptimeInt, .ComptimeFloat => switch (@typeInfo(U)) {
+            .Int => @as(U, @intFromFloat(num)),
+            .Float => @as(U, @floatFromInt(num)),
+            .Bool => if (num == 1) true else false,
+            else => @compileError("Unsupported type"),
+        },
+        .Bool => switch (@typeInfo(U)) {
+            .Int => @intFromBool(num),
+            .Float => @as(U, @floatFromInt(@intFromBool(num))),
+            .Bool => if (num == 1) true else false,
+            // else => @compileError("Unsupported cast from bool to " ++ @typeInfo(@TypeOf(U)) ++ ":" ++ @typeName(U)),
+            else => @compileError("Unsupported type"),
+        },
+        // else => @compileError("Unsupported type " ++ @typeInfo(@TypeOf(T)) ++ ":" ++ @typeName(T) ++ " to " ++ @typeInfo(@TypeOf(U)) ++ ":" ++ @typeName(U)),
         else => @compileError("Unsupported type"),
     };
 }
 
 pub fn cast(comptime T: type, item: anytype) T {
     switch (@typeInfo(@TypeOf(item))) {
-        .Int, .Float => return numberCast(@TypeOf(item), T, item),
-        else => @compileError("Unsupported type"),
+        .Int, .Float, .Bool, .ComptimeInt, .ComptimeFloat => return numberCast(@TypeOf(item), T, item),
+        else => @compileError("cast function unsupported type " ++ @typeInfo(@TypeOf(item))),
     }
 }
 
-pub fn vector2As(comptime T: type, vec: anytype) struct { x: T, y: T } {
-    return .{ .x = cast(T, vec.x), .y = cast(T, vec.y) };
+test "cast int to bool" {
+    try std.testing.expectEqual(true, cast(bool, 1));
+    try std.testing.expectEqual(false, cast(bool, 0));
+}
+
+test "cast bool to int" {
+    try std.testing.expectEqual(1, cast(u8, true));
+    try std.testing.expectEqual(0, cast(u8, false));
+}
+
+test "cast bool to float" {
+    try std.testing.expectEqual(1.0, cast(f32, true));
+    try std.testing.expectEqual(0.0, cast(f32, false));
 }
