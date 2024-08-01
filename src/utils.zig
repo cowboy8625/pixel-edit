@@ -3,22 +3,39 @@ const std = @import("std");
 pub fn numberCast(comptime T: type, comptime U: type, num: T) U {
     if (T == U) return num;
     return switch (@typeInfo(T)) {
-        .Int => if (@typeInfo(U) == .Float) @as(U, @floatFromInt(num)) else @as(U, @intCast(num)),
-        .Float => if (@typeInfo(U) == .Int) @as(U, @intFromFloat(num)) else @as(U, @floatCast(num)),
+        .Int => switch (@typeInfo(U)) {
+            .Int => @as(U, @intCast(num)),
+            .Float => @as(U, @floatFromInt(num)),
+            .Bool => castToBool(T, num),
+            else => @compileError("Unsupported type"),
+        },
+        .Float => switch (@typeInfo(U)) {
+            .Int => @as(U, @floatFromInt(num)),
+            .Float => @as(U, @floatCast(num)),
+            .Bool => castToBool(T, num),
+            else => @compileError("Unsupported type"),
+        },
         .ComptimeInt, .ComptimeFloat => switch (@typeInfo(U)) {
             .Int => @as(U, @intFromFloat(num)),
             .Float => @as(U, @floatFromInt(num)),
-            .Bool => if (num == 1) true else false,
+            .Bool => castToBool(T, num),
             else => @compileError("Unsupported type"),
         },
         .Bool => switch (@typeInfo(U)) {
             .Int => @intFromBool(num),
             .Float => @as(U, @floatFromInt(@intFromBool(num))),
-            .Bool => if (num == 1) true else false,
-            // else => @compileError("Unsupported cast from bool to " ++ @typeInfo(@TypeOf(U)) ++ ":" ++ @typeName(U)),
+            .Bool => castToBool(T, num),
             else => @compileError("Unsupported type"),
         },
-        // else => @compileError("Unsupported type " ++ @typeInfo(@TypeOf(T)) ++ ":" ++ @typeName(T) ++ " to " ++ @typeInfo(@TypeOf(U)) ++ ":" ++ @typeName(U)),
+        else => @compileError("Unsupported type"),
+    };
+}
+
+fn castToBool(comptime T: type, item: T) bool {
+    return switch (@typeInfo(T)) {
+        .Int => item != 0,
+        .Float => item != 0.0,
+        .Bool => item,
         else => @compileError("Unsupported type"),
     };
 }
@@ -33,6 +50,9 @@ pub fn cast(comptime T: type, item: anytype) T {
 test "cast int to bool" {
     try std.testing.expectEqual(true, cast(bool, 1));
     try std.testing.expectEqual(false, cast(bool, 0));
+    try std.testing.expectEqual(false, cast(bool, 100));
+    const num: i32 = 1;
+    try std.testing.expectEqual(true, cast(bool, num));
 }
 
 test "cast bool to int" {

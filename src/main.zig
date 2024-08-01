@@ -1,6 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const rl = @import("raylib");
+const rg = @import("raygui");
 const utils = @import("utils.zig");
 const cast = utils.cast;
 
@@ -28,6 +29,12 @@ pub fn main() !void {
     };
 
     rl.setTargetFPS(60);
+    var color = rl.Color{ .r = 255, .g = 255, .b = 255, .a = 255 };
+    rg.guiSetStyle(
+        rg.GuiState.state_normal,
+        rg.GuiControlProperty.border_width,
+        20,
+    );
 
     while (!rl.windowShouldClose()) {
         // -------   UPDATE   -------
@@ -43,6 +50,12 @@ pub fn main() !void {
 
         rl.endMode2D();
         // -------    GUI     -------
+        _ = rg.guiColorPicker(.{ .x = 10, .y = 10, .width = 200, .height = 200 }, "Color Picker", &color);
+        // if (cast(bool, rg.guiPanel(.{ .x = 10, .y = 10, .width = 200, .height = 200 }, "Panel"))) {
+        //     std.debug.print("Panel\n", .{});
+        // }
+
+        _ = rg.guiLabel(.{ .x = 100, .y = 10, .width = 200, .height = 20 }, rl.textFormat("Color: %d, %d, %d, %d", .{ color.r, color.g, color.b, color.a }));
 
         // -------  END GUI   -------
         // -------  END DRAW  -------
