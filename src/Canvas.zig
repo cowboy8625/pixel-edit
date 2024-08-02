@@ -1,6 +1,7 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const rl = @import("raylib");
+const rg = @import("raygui");
 const utils = @import("utils.zig");
 const cast = utils.cast;
 
@@ -15,7 +16,7 @@ alloc: Allocator,
 pixels: Pixels,
 rect: rl.Rectangle,
 cell_size: rl.Vector2,
-background_color: rl.Color = rl.Color.ray_white,
+background_color: rl.Color = rl.Color.gray,
 
 /// width and height are in pixels/cells
 pub fn init(alloc: Allocator, rect: rl.Rectangle, cell_size: rl.Vector2) !Self {
@@ -70,8 +71,10 @@ pub fn get(self: *const Self, pos: anytype) ?rl.Color {
     return self.pixels.get(pos);
 }
 
-pub fn draw(self: *const Self) void {
+pub fn draw(self: *Self) void {
     rl.drawRectangleRec(self.rect, self.background_color);
+    rl.drawText(rl.textFormat("%.0f", .{self.cell_size.x}), 20, -20, 20, rl.Color.black);
+    rl.drawText(rl.textFormat("%.0f", .{self.cell_size.y}), -20, 20, 20, rl.Color.black);
     var iter = self.pixels.iterator();
     while (iter.next()) |entry| {
         const pos: rl.Vector2 = .{

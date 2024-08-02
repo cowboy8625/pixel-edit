@@ -1,14 +1,19 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
-const Dragable = @import("Dragable.zig").Dragable;
+const Ui = @import("Ui.zig");
 const Canvas = @import("Canvas.zig");
 const rl = @import("raylib");
 const rg = @import("raygui");
 const utils = @import("utils.zig");
 const cast = utils.cast;
 
+const Button = @import("Button.zig").Button;
+
+const Brush = @import("Brush.zig");
+
 test {
     _ = @import("Canvas.zig");
+    _ = @import("Dragable.zig");
     _ = @import("utils.zig");
 }
 
@@ -30,7 +35,6 @@ pub fn main() !void {
     );
     defer canvas.deinit();
 
-    // var camera_offset: ?rl.Vector2 = null;
     var camera = rl.Camera2D{
         .offset = rl.Vector2{
             .x = @divFloor(screen_width, 2) - @divFloor(canvas.rect.width, 2),
@@ -41,31 +45,53 @@ pub fn main() !void {
         .zoom = 1,
     };
 
-    // var color = rl.Color{ .r = 255, .g = 255, .b = 255, .a = 255 };
-    // var colorPicker = Dragable(*rl.Color).init(
-    //     .{ .x = 10, .y = 10, .width = 200, .height = 200 },
-    //     .mouse_button_middle,
-    //     struct {
-    //         fn callback(rect: rl.Rectangle, arg: *rl.Color) void {
-    //             _ = rg.guiColorPicker(rect, "Color Picker", arg);
-    //         }
-    //     }.callback,
-    // );
+    var brush = Brush.init();
+    var ui = Ui.init();
+    defer ui.deinit();
 
     rl.setTargetFPS(60);
     while (!rl.windowShouldClose()) {
         // -------   UPDATE   -------
         const pos = rl.getMousePosition();
+        const worldMosusePosition = rl.getScreenToWorld2D(pos, camera);
 
-        if (rl.isMouseButtonDown(.mouse_button_middle)) {
-            const wp = rl.getScreenToWorld2D(pos, camera);
-            camera.target = wp.scale(-1.0);
+        const gui_active = ui.update(pos);
+        if (!gui_active and
+            rl.checkCollisionPointRec(worldMosusePosition, canvas.rect) and
+            rl.isMouseButtonDown(.mouse_button_middle))
+        {
+            var delta = rl.getMouseDelta();
+            delta = delta.scale(-1.0 / camera.zoom);
+            camera.target = camera.target.add(delta);
         }
-        if (rl.isMouseButtonPressed(.mouse_button_left)) {
-            camera.target = .{ .x = 0, .y = 0 };
+
+        const wheel = rl.getMouseWheelMove();
+
+        if (wheel != 0) {
+            const zoomIncrement = 0.1;
+            camera.zoom += wheel * zoomIncrement;
+
+            if (camera.zoom < 0.1) camera.zoom = 0.1; // Minimum zoom level
+            if (camera.zoom > 3.0) camera.zoom = 3.0; // Maximum zoom level
+
+            // Adjust camera target based on zoom
+            const mousePositionAfter = rl.getScreenToWorld2D(pos, camera);
+            camera.target.x -= (mousePositionAfter.x - worldMosusePosition.x);
+            camera.target.y -= (mousePositionAfter.y - worldMosusePosition.y);
         }
-        // updateCameraTarget(pos, canvas.rect, &camera, &camera_offset);
-        // colorPicker.update(pos);
+
+        if (rl.checkCollisionPointRec(worldMosusePosition, canvas.rect)) {
+            rl.hideCursor();
+            brush.showOutline();
+            if (rl.isMouseButtonDown(.mouse_button_left)) {
+                try canvas.insert(worldMosusePosition.divide(canvas.cell_size), brush.color);
+            } else if (rl.isMouseButtonDown(.mouse_button_right)) {
+                canvas.remove(worldMosusePosition.divide(canvas.cell_size));
+            }
+        } else {
+            brush.hideOutline();
+            rl.showCursor();
+        }
 
         // ------- END UPDATE -------
         // -------    DRAW    -------
@@ -75,62 +101,16 @@ pub fn main() !void {
         rl.beginMode2D(camera);
 
         canvas.draw();
-        rl.drawRectangleRec(.{
-            .x = camera.target.x,
-            .y = camera.target.y,
-            .width = canvas.cell_size.x,
-            .height = canvas.cell_size.y,
-        }, rl.Color.magenta);
-
-        rl.drawRectangleRec(.{
-            .x = pos.x - camera.offset.x,
-            .y = pos.y - camera.offset.y,
-            .width = canvas.cell_size.x,
-            .height = canvas.cell_size.y,
-        }, rl.Color.red);
-        const wp = rl.getScreenToWorld2D(pos, camera);
-        rl.drawRectangleRec(.{
-            .x = wp.x,
-            .y = wp.y,
-            .width = canvas.cell_size.x,
-            .height = canvas.cell_size.y,
-        }, rl.Color.yellow);
+        brush.draw(worldMosusePosition, canvas.cell_size);
 
         rl.endMode2D();
         // -------    GUI     -------
 
-        // colorPicker.draw(&color);
+        ui.draw(&brush.color);
 
-        rl.drawText(rl.textFormat("%.2f, %.2f", .{ camera.target.x, camera.target.y }), 10, 10, 20, rl.Color.black);
-        rl.drawText(rl.textFormat("%.2f, %.2f", .{ pos.x - camera.offset.x, pos.y - camera.offset.y }), 10, 30, 20, rl.Color.black);
-        rl.drawText(rl.textFormat("%.2f, %.2f", .{ canvas.rect.x, canvas.rect.x }), 10, 50, 20, rl.Color.black);
         // -------  END GUI   -------
         // -------  END DRAW  -------
     }
-}
-
-fn updateCameraTarget(pos: rl.Vector2, rect: rl.Rectangle, camera: *rl.Camera2D, offset: *?rl.Vector2) void {
-    const world_pos = rl.getScreenToWorld2D(pos, camera.*);
-    if (rl.isMouseButtonReleased(.mouse_button_middle)) {
-        offset.* = null;
-        return;
-    }
-    if (!rl.checkCollisionPointRec(world_pos, rect)) {
-        return;
-    }
-    if (rl.isMouseButtonPressed(.mouse_button_middle)) {
-        const canvas_pos: rl.Vector2 = .{
-            .x = rect.x,
-            .y = rect.y,
-        };
-        offset.* = world_pos.subtract(canvas_pos);
-    }
-    if (offset.* == null) {
-        return;
-    }
-
-    camera.*.target.x = world_pos.x - offset.*.?.x;
-    camera.*.target.y = world_pos.y - offset.*.?.y;
 }
 
 fn guiSetup() void {
