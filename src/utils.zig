@@ -27,6 +27,12 @@ pub fn numberCast(comptime T: type, comptime U: type, num: T) U {
             .Bool => castToBool(T, num),
             else => @compileError("Unsupported type"),
         },
+        .Enum => switch (@typeInfo(U)) {
+            .Int => @intFromEnum(num),
+            .Float => @as(U, @floatFromInt(@intFromEnum(num))),
+            .Bool => castToBool(T, num),
+            else => @compileError("Unsupported type"),
+        },
         else => @compileError("Unsupported type"),
     };
 }
@@ -42,7 +48,7 @@ fn castToBool(comptime T: type, item: T) bool {
 
 pub fn cast(comptime T: type, item: anytype) T {
     switch (@typeInfo(@TypeOf(item))) {
-        .Int, .Float, .Bool, .ComptimeInt, .ComptimeFloat => return numberCast(@TypeOf(item), T, item),
+        .Int, .Float, .Bool, .ComptimeInt, .ComptimeFloat, .Enum => return numberCast(@TypeOf(item), T, item),
         else => @compileError("cast function unsupported type " ++ @typeInfo(@TypeOf(item))),
     }
 }
@@ -63,4 +69,10 @@ test "cast bool to int" {
 test "cast bool to float" {
     try std.testing.expectEqual(1.0, cast(f32, true));
     try std.testing.expectEqual(0.0, cast(f32, false));
+}
+
+test "cast enum to int" {
+    const enumType = enum { one, two };
+    try std.testing.expectEqual(0, cast(u8, enumType.one));
+    try std.testing.expectEqual(1, cast(u8, enumType.two));
 }
