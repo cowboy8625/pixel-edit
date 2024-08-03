@@ -35,7 +35,7 @@ pub fn init() Self {
             };
         }
     }.callback);
-    defer button.deinit();
+    errdefer button.deinit();
 
     return .{
         .color_picker = Dragable(*rl.Color).init(

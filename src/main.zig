@@ -26,7 +26,8 @@ pub fn main() !void {
     const screen_height = 600;
     rl.initWindow(screen_width, screen_height, "Pixel Edit");
     defer rl.closeWindow();
-    guiSetup();
+
+    // guiSetup();
 
     var canvas = try Canvas.init(
         allocator,
