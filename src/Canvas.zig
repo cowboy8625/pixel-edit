@@ -16,6 +16,7 @@ alloc: Allocator,
 pixels: Pixels,
 rect: rl.Rectangle,
 cell_size: rl.Vector2,
+size_in_pixels: rl.Vector2,
 background_color: rl.Color = rl.Color.gray,
 
 /// width and height are in pixels/cells
@@ -31,6 +32,10 @@ pub fn init(alloc: Allocator, rect: rl.Rectangle, cell_size: rl.Vector2) !Self {
             .y = rect.y,
             .width = rect.width * cell_size.x,
             .height = rect.height * cell_size.y,
+        },
+        .size_in_pixels = .{
+            .x = rect.width,
+            .y = rect.height,
         },
         .cell_size = cell_size,
     };
@@ -71,10 +76,17 @@ pub fn get(self: *const Self, pos: anytype) ?rl.Color {
     return self.pixels.get(pos);
 }
 
+pub fn update(self: *Self) void {
+    self.rect = .{
+        .x = self.rect.x,
+        .y = self.rect.y,
+        .width = self.size_in_pixels.x * self.cell_size.x,
+        .height = self.size_in_pixels.y * self.cell_size.y,
+    };
+}
+
 pub fn draw(self: *Self) void {
     rl.drawRectangleRec(self.rect, self.background_color);
-    rl.drawText(rl.textFormat("%.0f", .{self.cell_size.x}), 20, -20, 20, rl.Color.black);
-    rl.drawText(rl.textFormat("%.0f", .{self.cell_size.y}), -20, 20, 20, rl.Color.black);
     var iter = self.pixels.iterator();
     while (iter.next()) |entry| {
         const pos: rl.Vector2 = .{
