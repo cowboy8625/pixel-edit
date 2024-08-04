@@ -45,6 +45,26 @@ pub fn deinit(self: *Self) void {
     self.pixels.deinit();
 }
 
+pub fn save(self: *Self, path: []const u8) void {
+    const width = self.size_in_pixels.x;
+    const height = self.size_in_pixels.y;
+    const target = rl.loadRenderTexture(cast(i32, width), cast(i32, height));
+    defer rl.unloadTexture(target.texture);
+
+    rl.beginTextureMode(target);
+    var iter = self.pixels.iterator();
+    while (iter.next()) |kv| {
+        const pos = kv.key_ptr.*;
+        const color = kv.value_ptr.*;
+        rl.drawPixel(cast(i32, pos.x), cast(i32, pos.y), color);
+    }
+    rl.endTextureMode();
+    var image = rl.loadImageFromTexture(target.texture);
+    rl.imageFlipVertical(&image);
+    const cpath: [*c]const u8 = @ptrCast(path);
+    _ = rl.exportImage(image, cpath);
+}
+
 pub fn clear(self: *Self) void {
     self.pixels.clearRetainingCapacity();
 }

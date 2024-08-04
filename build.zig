@@ -28,6 +28,14 @@ pub fn build(b: *std.Build) void {
     // exe.root_module.addImport("raymath", raymath);
     // ---- raylib.zig end ----
 
+    // ----- nfd.zig start -----
+    // const nfd = b.dependency("zig-nfd", .{
+    //     .target = target,
+    //     .optimize = optimize,
+    // });
+    // exe.root_module.addImport("nfd", nfd.module("zig-nfd"));
+    // ----- nfd.zig end -----
+
     b.installArtifact(exe);
 
     const run_cmd = b.addRunArtifact(exe);

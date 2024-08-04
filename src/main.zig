@@ -7,6 +7,7 @@ const rg = @import("raygui");
 const utils = @import("utils.zig");
 const cast = utils.cast;
 const Settings = @import("Settings.zig");
+// const nfd = @import("nfd");
 
 const Button = @import("Button.zig").Button;
 
@@ -60,13 +61,19 @@ pub fn main() !void {
     defer change_canvas_height.deinit();
     // ---------------------------
 
+    // var is_saving = true;
     rl.setTargetFPS(60);
     while (!rl.windowShouldClose()) {
         // -------   UPDATE   -------
         const pos = rl.getMousePosition();
         const worldMosusePosition = rl.getScreenToWorld2D(pos, camera);
+        // if (is_saving) {
+        //     _ = try nfd.saveDialog(allocator, null, null);
+        //     is_saving = false;
+        // }
 
-        const gui_active = ui.update(pos, &settings);
+        ui.file_manager.save(&canvas);
+        const gui_active = try ui.update(pos, &settings);
         if (!gui_active and
             rl.checkCollisionPointRec(worldMosusePosition, canvas.rect) and
             rl.isMouseButtonDown(.mouse_button_middle))
@@ -78,7 +85,7 @@ pub fn main() !void {
 
         updateCameraZoom(&camera, pos, worldMosusePosition);
 
-        if (rl.checkCollisionPointRec(worldMosusePosition, canvas.rect)) {
+        if (!gui_active and rl.checkCollisionPointRec(worldMosusePosition, canvas.rect)) {
             rl.hideCursor();
             brush.showOutline();
             if (rl.isMouseButtonDown(.mouse_button_left)) {
@@ -113,7 +120,7 @@ pub fn main() !void {
         rl.endMode2D();
         // -------    GUI     -------
 
-        ui.draw(&brush.color);
+        try ui.draw(&brush.color);
 
         // -------  END GUI   -------
         // -------  END DRAW  -------

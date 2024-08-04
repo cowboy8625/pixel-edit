@@ -14,6 +14,9 @@ pub fn Button(comptime T: type) type {
         hitbox: rl.Rectangle,
         font_size: f32,
         callback: (*const fn (T) void),
+        text_color: rl.Color = rl.Color.ray_white,
+        hover_color: rl.Color = rl.Color.green,
+        is_hovered: bool = false,
 
         pub fn init(text: ?[]const u8, texture: ?rl.Texture2D, pos: rl.Vector2, font_size: f32, callback: (*const fn (T) void)) Self {
             const spacing = 4;
@@ -57,17 +60,24 @@ pub fn Button(comptime T: type) type {
             self.hitbox = callback(self.hitbox);
         }
 
+        pub fn setTextColor(self: *Self, color: rl.Color) void {
+            self.text_color = color;
+        }
+
         pub fn deinit(self: *Self) void {
             if (self.texture) |texture| rl.unloadTexture(texture);
         }
 
         pub fn update(self: *Self, mouse_pos: rl.Vector2, args: T) bool {
             if (rl.checkCollisionPointRec(mouse_pos, self.hitbox)) {
+                self.is_hovered = true;
                 if (rl.isMouseButtonPressed(.mouse_button_left)) {
                     self.callback(args);
                     return true;
                 }
+                return true;
             }
+            self.is_hovered = false;
             return false;
         }
 
@@ -85,7 +95,8 @@ pub fn Button(comptime T: type) type {
         fn drawText(self: *Self) void {
             if (self.text == null) return;
             const ctext: [*:0]const u8 = @ptrCast(self.text);
-            rl.drawTextEx(rl.getFontDefault(), ctext, self.pos, self.font_size, 0, rl.Color.white);
+            const color = if (self.is_hovered) self.hover_color else self.text_color;
+            rl.drawTextEx(rl.getFontDefault(), ctext, self.pos, self.font_size, 0, color);
         }
         pub fn draw(self: *Self) void {
             self.drawTexture();
