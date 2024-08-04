@@ -7,6 +7,7 @@ const rg = @import("raygui");
 const utils = @import("utils.zig");
 const cast = utils.cast;
 const Settings = @import("Settings.zig");
+const handleCliArgs = @import("args.zig").handleCliArgs;
 // const nfd = @import("nfd");
 
 const Button = @import("Button.zig").Button;
@@ -25,19 +26,24 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    const screen_width = 800;
-    const screen_height = 600;
-    rl.initWindow(screen_width, screen_height, "Pixel Edit");
-    defer rl.closeWindow();
-
-    // guiSetup();
-
     var canvas = try Canvas.init(
         allocator,
         .{ .x = 0, .y = 0, .width = 16, .height = 16 },
         .{ .x = 16, .y = 16 },
     );
     defer canvas.deinit();
+
+    var canvas_overlay_pixels = std.ArrayList(rl.Vector2).init(allocator);
+    defer canvas_overlay_pixels.deinit();
+
+    try handleCliArgs(allocator, &canvas);
+
+    const screen_width = 800;
+    const screen_height = 600;
+    rl.initWindow(screen_width, screen_height, "Pixel Edit");
+    defer rl.closeWindow();
+
+    // guiSetup();
 
     var camera = rl.Camera2D{
         .offset = rl.Vector2{
@@ -88,8 +94,15 @@ pub fn main() !void {
         if (!gui_active and rl.checkCollisionPointRec(worldMosusePosition, canvas.rect)) {
             rl.hideCursor();
             brush.showOutline();
-            if (rl.isMouseButtonDown(.mouse_button_left)) {
+            if (rl.isMouseButtonDown(.mouse_button_left) and !settings.line_tool) {
                 try canvas.insert(worldMosusePosition.divide(canvas.cell_size), brush.color);
+                settings.last_cell_position = worldMosusePosition;
+            } else if (rl.isMouseButtonDown(.mouse_button_left) and settings.line_tool) {
+                settings.last_cell_position = worldMosusePosition;
+                for (canvas_overlay_pixels.items) |pixel| {
+                    try canvas.insert(pixel, brush.color);
+                }
+                canvas_overlay_pixels.clearRetainingCapacity();
             } else if (rl.isMouseButtonDown(.mouse_button_right)) {
                 canvas.remove(worldMosusePosition.divide(canvas.cell_size));
             }
@@ -102,6 +115,17 @@ pub fn main() !void {
         change_canvas_width.update(worldMosusePosition, &canvas.size_in_pixels.x);
         change_canvas_height.update(worldMosusePosition, &canvas.size_in_pixels.y);
 
+        if (settings.line_tool) {
+            canvas_overlay_pixels.clearRetainingCapacity();
+            const x1 = cast(i32, @divFloor(settings.last_cell_position.x, canvas.cell_size.x));
+            const y1 = cast(i32, @divFloor(settings.last_cell_position.y, canvas.cell_size.y));
+            const x2 = cast(i32, @divFloor(worldMosusePosition.x, canvas.cell_size.x));
+            const y2 = cast(i32, @divFloor(worldMosusePosition.y, canvas.cell_size.y));
+            try bresenhamLine(x1, y1, x2, y2, &canvas_overlay_pixels);
+        } else {
+            canvas_overlay_pixels.clearRetainingCapacity();
+        }
+
         // ------- END UPDATE -------
         // -------    DRAW    -------
         rl.beginDrawing();
@@ -112,6 +136,15 @@ pub fn main() !void {
         change_canvas_width.draw(canvas.size_in_pixels.x);
         change_canvas_height.draw(canvas.size_in_pixels.y);
         canvas.draw();
+        for (canvas_overlay_pixels.items) |p| {
+            const rect = .{
+                .x = p.x * canvas.cell_size.x,
+                .y = p.y * canvas.cell_size.y,
+                .width = canvas.cell_size.x,
+                .height = canvas.cell_size.y,
+            };
+            rl.drawRectangleRec(rect, rl.Color.light_gray);
+        }
         brush.draw(worldMosusePosition, canvas.cell_size);
         if (settings.draw_grid) {
             drawGrid(canvas.size_in_pixels, canvas.cell_size);
@@ -260,4 +293,33 @@ fn guiSetup() void {
         cast(i32, rg.GuiControlProperty.text_color_normal),
         rl.Color.white.toInt(),
     );
+}
+
+fn bresenhamLine(xx1: i32, yy1: i32, x2: i32, y2: i32, out: *std.ArrayList(rl.Vector2)) !void {
+    var x1 = xx1;
+    var y1 = yy1;
+    const dx: i32 = cast(i32, @abs(x2 - x1));
+    const dy: i32 = cast(i32, @abs(y2 - y1));
+
+    const sx: i32 = if (x1 < x2) 1 else -1;
+    const sy: i32 = if (y1 < y2) 1 else -1;
+    var err: i32 = dx - dy;
+
+    while (true) {
+        try out.*.append(.{ .x = cast(f32, x1), .y = cast(f32, y1) });
+
+        if (x1 == x2 and y1 == y2) break;
+
+        const e2 = 2 * err;
+
+        if (e2 > -dy) {
+            err -= dy;
+            x1 += sx;
+        }
+
+        if (e2 < dx) {
+            err += dx;
+            y1 += sy;
+        }
+    }
 }

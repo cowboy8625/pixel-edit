@@ -1,3 +1,4 @@
+const rl = @import("raylib");
 draw_grid: bool = false,
-is_saving: bool = false,
-save_path: ?[]const u8 = null,
+line_tool: bool = false,
+last_cell_position: rl.Vector2 = .{ .x = 0, .y = 0 },

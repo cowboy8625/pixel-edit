@@ -89,7 +89,8 @@ pub fn Button(comptime T: type) type {
                 .width = cast(f32, self.texture.?.width),
                 .height = cast(f32, self.texture.?.height),
             };
-            rl.drawTexturePro(self.texture.?, origin, self.hitbox, .{ .x = 0, .y = 0 }, 0, rl.Color.white);
+            const color = if (self.is_hovered) self.hover_color else self.text_color;
+            rl.drawTexturePro(self.texture.?, origin, self.hitbox, .{ .x = 0, .y = 0 }, 0, color);
         }
 
         fn drawText(self: *Self) void {

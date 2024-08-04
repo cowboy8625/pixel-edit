@@ -20,6 +20,7 @@ is_menu_open: bool = false,
 toggle_grid: Button(*bool),
 file_manager_open_button: Button(*bool),
 file_manager: FileManager,
+line_tool_button: Button(*bool),
 
 pub fn init() Self {
     var button = Button(*bool).initWithTexture(
@@ -80,6 +81,19 @@ pub fn init() Self {
         }.callback,
     );
 
+    const line_tool_button = Button(*bool).initWithTexture(
+        assets.loadTexture(assets.LINE_TOOL_ICON),
+        .{
+            .x = toggle_file_picker.pos.x + toggle_file_picker.hitbox.width + 5,
+            .y = toggle_file_picker.pos.y,
+        },
+        struct {
+            fn callback(arg: *bool) void {
+                arg.* = !arg.*;
+            }
+        }.callback,
+    );
+
     return .{
         .color_picker = Dragable(*rl.Color).init(
             .{ .x = 200, .y = 10, .width = 200, .height = 200 },
@@ -95,6 +109,7 @@ pub fn init() Self {
         .toggle_file_picker = toggle_file_picker,
         .file_manager = FileManager.init(),
         .file_manager_open_button = file_manager_open_button,
+        .line_tool_button = line_tool_button,
         // .menu_bar = MenuBar.init(),
     };
 }
@@ -105,17 +120,20 @@ pub fn deinit(self: *Self) void {
     self.toggle_file_picker.deinit();
     self.file_manager.deinit();
     self.file_manager_open_button.deinit();
+    self.line_tool_button.deinit();
 }
 
-fn keyboardHandler(_: *Self) void {
-    // if (rl.isKeyReleased(.key_c)) {
-    //     self.color_picker_is_active = !self.color_picker_is_active;
-    // }
+fn keyboardHandler(_: *Self, settings: *Settings) void {
+    if (rl.isKeyDown(.key_left_shift)) {
+        settings.line_tool = true;
+    } else {
+        settings.line_tool = false;
+    }
 }
 
 pub fn update(self: *Self, mouse_pos: rl.Vector2, settings: *Settings) !bool {
     var active = false;
-    self.keyboardHandler();
+    self.keyboardHandler(settings);
 
     if (self.color_picker_is_active) {
         active = self.color_picker.update(mouse_pos);
@@ -142,6 +160,9 @@ pub fn update(self: *Self, mouse_pos: rl.Vector2, settings: *Settings) !bool {
     if (self.toggle_file_picker.update(mouse_pos, &self.color_picker_is_active)) {
         active = true;
     }
+    if (self.line_tool_button.update(mouse_pos, &settings.line_tool)) {
+        active = true;
+    }
     return active;
 }
 
@@ -158,4 +179,5 @@ pub fn drawMenu(self: *Self) void {
     self.toggle_grid.draw();
     self.file_manager_open_button.draw();
     self.toggle_file_picker.draw();
+    self.line_tool_button.draw();
 }

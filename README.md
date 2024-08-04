@@ -8,19 +8,17 @@
 - built with version `0.13.0`
 
 ```shell
-git clone https://github.com/cowboy8625/pixel-edit
-cd pixel-edit
-git checkout remastered
-git submodule update --init --recursive
+git clone https://github.com/cowboy8625/pixel-edit &&
+cd pixel-edit &&
 zig build run
 ```
 
 ### TODO
-- [ ] Fix Colon not being in the KeyboardKey enum
-- [ ] Try to use RayGui for the command bar
-- [ ] add cursor to command bar
-- [ ] add move cursor in command bar <kbd>left</kbd> and <kbd>right</kbd>
-- [ ] add <kbd>up</kbd> and <kbd>down</kbd> in command bar to move through command history
-- [ ] <kbd>f</kbd> to use the fill command
-- [ ] use of mouse for drawing
-- [ ] command: num:num to jump cursor to location
+- [ ] Add line tool
+- [ ] Add fill tool
+- [ ] Add animations
+- [ ] Export animations
+
+- [ ] World UI scaling with camera
+- [ ] TextInput add cursor movement with arrow keys
+- [ ] Ui implementation for buttons on a grid.
