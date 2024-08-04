@@ -6,9 +6,9 @@ const rl = @import("raylib");
 const rg = @import("raygui");
 const utils = @import("utils.zig");
 const cast = utils.cast;
-const Settings = @import("Settings.zig");
+const Context = @import("Context.zig");
 const handleCliArgs = @import("args.zig").handleCliArgs;
-// const nfd = @import("nfd");
+const algorithms = @import("algorithms.zig");
 
 const Button = @import("Button.zig").Button;
 
@@ -21,7 +21,7 @@ test {
 }
 
 pub fn main() !void {
-    var settings = Settings{};
+    var context = Context{};
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
@@ -57,7 +57,7 @@ pub fn main() !void {
 
     var brush = Brush.init();
     defer brush.deinit();
-    var ui = Ui.init();
+    var ui = Ui.init(.{ .x = 0, .y = 0, .width = 110, .height = screen_height });
     defer ui.deinit();
 
     // -----  In World Space  ----
@@ -67,19 +67,14 @@ pub fn main() !void {
     defer change_canvas_height.deinit();
     // ---------------------------
 
-    // var is_saving = true;
     rl.setTargetFPS(60);
     while (!rl.windowShouldClose()) {
         // -------   UPDATE   -------
         const pos = rl.getMousePosition();
         const worldMosusePosition = rl.getScreenToWorld2D(pos, camera);
-        // if (is_saving) {
-        //     _ = try nfd.saveDialog(allocator, null, null);
-        //     is_saving = false;
-        // }
 
         ui.file_manager.save(&canvas);
-        const gui_active = try ui.update(pos, &settings);
+        const gui_active = try ui.update(pos, &context);
         if (!gui_active and
             rl.checkCollisionPointRec(worldMosusePosition, canvas.rect) and
             rl.isMouseButtonDown(.mouse_button_middle))
@@ -91,37 +86,43 @@ pub fn main() !void {
 
         updateCameraZoom(&camera, pos, worldMosusePosition);
 
+        canvas.update();
+        change_canvas_width.update(worldMosusePosition, &canvas.size_in_pixels.x);
+        change_canvas_height.update(worldMosusePosition, &canvas.size_in_pixels.y);
+
         if (!gui_active and rl.checkCollisionPointRec(worldMosusePosition, canvas.rect)) {
-            rl.hideCursor();
-            brush.showOutline();
-            if (rl.isMouseButtonDown(.mouse_button_left) and !settings.line_tool) {
-                try canvas.insert(worldMosusePosition.divide(canvas.cell_size), brush.color);
-                settings.last_cell_position = worldMosusePosition;
-            } else if (rl.isMouseButtonDown(.mouse_button_left) and settings.line_tool) {
-                settings.last_cell_position = worldMosusePosition;
-                for (canvas_overlay_pixels.items) |pixel| {
-                    try canvas.insert(pixel, brush.color);
-                }
-                canvas_overlay_pixels.clearRetainingCapacity();
-            } else if (rl.isMouseButtonDown(.mouse_button_right)) {
-                canvas.remove(worldMosusePosition.divide(canvas.cell_size));
+            switch (context.mode) {
+                .Draw => if (rl.isMouseButtonDown(.mouse_button_left)) {
+                    try canvas.insert(worldMosusePosition.divide(canvas.cell_size), brush.color);
+                    context.last_cell_position = worldMosusePosition;
+                } else if (rl.isMouseButtonDown(.mouse_button_right)) {
+                    canvas.remove(worldMosusePosition.divide(canvas.cell_size));
+                },
+                .Line => if (rl.isMouseButtonDown(.mouse_button_left)) {
+                    context.last_cell_position = worldMosusePosition;
+                    for (canvas_overlay_pixels.items) |pixel| {
+                        try canvas.insert(pixel, brush.color);
+                    }
+                    canvas_overlay_pixels.clearRetainingCapacity();
+                },
+                .Fill => if (rl.isMouseButtonPressed(.mouse_button_left)) {
+                    const x = cast(usize, @divFloor(worldMosusePosition.x, canvas.cell_size.x));
+                    const y = cast(usize, @divFloor(worldMosusePosition.y, canvas.cell_size.y));
+                    try algorithms.floodFill(allocator, &canvas, brush, .{ .x = x, .y = y });
+                },
             }
         } else {
             brush.hideOutline();
             rl.showCursor();
         }
 
-        canvas.update();
-        change_canvas_width.update(worldMosusePosition, &canvas.size_in_pixels.x);
-        change_canvas_height.update(worldMosusePosition, &canvas.size_in_pixels.y);
-
-        if (settings.line_tool) {
+        if (context.mode == .Line) {
             canvas_overlay_pixels.clearRetainingCapacity();
-            const x1 = cast(i32, @divFloor(settings.last_cell_position.x, canvas.cell_size.x));
-            const y1 = cast(i32, @divFloor(settings.last_cell_position.y, canvas.cell_size.y));
+            const x1 = cast(i32, @divFloor(context.last_cell_position.x, canvas.cell_size.x));
+            const y1 = cast(i32, @divFloor(context.last_cell_position.y, canvas.cell_size.y));
             const x2 = cast(i32, @divFloor(worldMosusePosition.x, canvas.cell_size.x));
             const y2 = cast(i32, @divFloor(worldMosusePosition.y, canvas.cell_size.y));
-            try bresenhamLine(x1, y1, x2, y2, &canvas_overlay_pixels);
+            try algorithms.bresenhamLine(x1, y1, x2, y2, &canvas_overlay_pixels);
         } else {
             canvas_overlay_pixels.clearRetainingCapacity();
         }
@@ -146,7 +147,7 @@ pub fn main() !void {
             rl.drawRectangleRec(rect, rl.Color.light_gray);
         }
         brush.draw(worldMosusePosition, canvas.cell_size);
-        if (settings.draw_grid) {
+        if (context.draw_grid) {
             drawGrid(canvas.size_in_pixels, canvas.cell_size);
         }
 
@@ -293,33 +294,4 @@ fn guiSetup() void {
         cast(i32, rg.GuiControlProperty.text_color_normal),
         rl.Color.white.toInt(),
     );
-}
-
-fn bresenhamLine(xx1: i32, yy1: i32, x2: i32, y2: i32, out: *std.ArrayList(rl.Vector2)) !void {
-    var x1 = xx1;
-    var y1 = yy1;
-    const dx: i32 = cast(i32, @abs(x2 - x1));
-    const dy: i32 = cast(i32, @abs(y2 - y1));
-
-    const sx: i32 = if (x1 < x2) 1 else -1;
-    const sy: i32 = if (y1 < y2) 1 else -1;
-    var err: i32 = dx - dy;
-
-    while (true) {
-        try out.*.append(.{ .x = cast(f32, x1), .y = cast(f32, y1) });
-
-        if (x1 == x2 and y1 == y2) break;
-
-        const e2 = 2 * err;
-
-        if (e2 > -dy) {
-            err -= dy;
-            x1 += sx;
-        }
-
-        if (e2 < dx) {
-            err += dx;
-            y1 += sy;
-        }
-    }
 }

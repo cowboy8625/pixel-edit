@@ -5,13 +5,14 @@ const utils = @import("utils.zig");
 const cast = utils.cast;
 const assets = @import("assets.zig");
 
-const Settings = @import("Settings.zig");
+const Context = @import("Context.zig");
 const Dragable = @import("Dragable.zig").Dragable;
 const MenuBar = @import("MenuBar.zig");
 const Button = @import("Button.zig").Button;
 const FileManager = @import("FileManager.zig");
 
 const Self = @This();
+menu_rect: rl.Rectangle,
 color_picker: Dragable(*rl.Color),
 color_picker_is_active: bool = false,
 toggle_file_picker: Button(*bool),
@@ -20,9 +21,10 @@ is_menu_open: bool = false,
 toggle_grid: Button(*bool),
 file_manager_open_button: Button(*bool),
 file_manager: FileManager,
-line_tool_button: Button(*bool),
+line_tool_button: Button(*Context.Mode),
+bucket_tool_button: Button(*Context.Mode),
 
-pub fn init() Self {
+pub fn init(menu_rect: rl.Rectangle) Self {
     var button = Button(*bool).initWithTexture(
         assets.loadTexture(assets.MENU_ICON),
         .{ .x = 2, .y = 2 },
@@ -81,20 +83,34 @@ pub fn init() Self {
         }.callback,
     );
 
-    const line_tool_button = Button(*bool).initWithTexture(
+    const line_tool_button = Button(*Context.Mode).initWithTexture(
         assets.loadTexture(assets.LINE_TOOL_ICON),
         .{
             .x = toggle_file_picker.pos.x + toggle_file_picker.hitbox.width + 5,
             .y = toggle_file_picker.pos.y,
         },
         struct {
-            fn callback(arg: *bool) void {
-                arg.* = !arg.*;
+            fn callback(arg: *Context.Mode) void {
+                arg.* = .Line;
+            }
+        }.callback,
+    );
+
+    const bucket_tool_button = Button(*Context.Mode).initWithTexture(
+        assets.loadTexture(assets.BUCKET_TOOL_ICON),
+        .{
+            .x = line_tool_button.pos.x + line_tool_button.hitbox.width + 5,
+            .y = line_tool_button.pos.y,
+        },
+        struct {
+            fn callback(arg: *Context.Mode) void {
+                arg.* = .Fill;
             }
         }.callback,
     );
 
     return .{
+        .menu_rect = menu_rect,
         .color_picker = Dragable(*rl.Color).init(
             .{ .x = 200, .y = 10, .width = 200, .height = 200 },
             .mouse_button_middle,
@@ -110,7 +126,7 @@ pub fn init() Self {
         .file_manager = FileManager.init(),
         .file_manager_open_button = file_manager_open_button,
         .line_tool_button = line_tool_button,
-        // .menu_bar = MenuBar.init(),
+        .bucket_tool_button = bucket_tool_button,
     };
 }
 
@@ -123,17 +139,17 @@ pub fn deinit(self: *Self) void {
     self.line_tool_button.deinit();
 }
 
-fn keyboardHandler(_: *Self, settings: *Settings) void {
+fn keyboardHandler(_: *Self, context: *Context) void {
     if (rl.isKeyDown(.key_left_shift)) {
-        settings.line_tool = true;
-    } else {
-        settings.line_tool = false;
+        context.mode = .Line;
+    } else if (rl.isKeyReleased(.key_left_shift)) {
+        context.mode = .Draw;
     }
 }
 
-pub fn update(self: *Self, mouse_pos: rl.Vector2, settings: *Settings) !bool {
+pub fn update(self: *Self, mouse_pos: rl.Vector2, context: *Context) !bool {
     var active = false;
-    self.keyboardHandler(settings);
+    self.keyboardHandler(context);
 
     if (self.color_picker_is_active) {
         active = self.color_picker.update(mouse_pos);
@@ -149,7 +165,7 @@ pub fn update(self: *Self, mouse_pos: rl.Vector2, settings: *Settings) !bool {
 
     if (!self.is_menu_open) return active;
 
-    if (self.toggle_grid.update(mouse_pos, &settings.draw_grid)) {
+    if (self.toggle_grid.update(mouse_pos, &context.draw_grid)) {
         active = true;
     }
 
@@ -160,7 +176,12 @@ pub fn update(self: *Self, mouse_pos: rl.Vector2, settings: *Settings) !bool {
     if (self.toggle_file_picker.update(mouse_pos, &self.color_picker_is_active)) {
         active = true;
     }
-    if (self.line_tool_button.update(mouse_pos, &settings.line_tool)) {
+
+    if (self.line_tool_button.update(mouse_pos, &context.mode)) {
+        active = true;
+    }
+
+    if (self.bucket_tool_button.update(mouse_pos, &context.mode)) {
         active = true;
     }
     return active;
@@ -175,9 +196,10 @@ pub fn draw(self: *Self, brush_color: *rl.Color) !void {
 
 pub fn drawMenu(self: *Self) void {
     if (!self.is_menu_open) return;
-    _ = rl.drawRectangle(0, 0, 100, rl.getScreenHeight(), rl.Color.init(0x32, 0x30, 0x2f, 0xff));
+    _ = rl.drawRectangleRec(self.menu_rect, rl.Color.init(0x32, 0x30, 0x2f, 0xff));
     self.toggle_grid.draw();
     self.file_manager_open_button.draw();
     self.toggle_file_picker.draw();
     self.line_tool_button.draw();
+    self.bucket_tool_button.draw();
 }

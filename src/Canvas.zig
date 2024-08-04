@@ -6,7 +6,7 @@ const utils = @import("utils.zig");
 const cast = utils.cast;
 
 const Pixels = std.AutoHashMap(Point, rl.Color);
-const Point = struct {
+pub const Point = struct {
     x: usize,
     y: usize,
 };
@@ -80,20 +80,8 @@ pub fn remove(self: *Self, pos: anytype) void {
 }
 
 pub fn get(self: *const Self, pos: anytype) ?rl.Color {
-    switch (@TypeOf(pos)) {
-        rl.Vector2 => {
-            const x = cast(usize, pos.x);
-            const y = cast(usize, pos.y);
-            return self.pixels.get(.{ .x = x, .y = y });
-        },
-        Point => {
-            return self.pixels.get(pos);
-        },
-        else => {
-            @compileError("Invalid type: " ++ @typeName(@TypeOf(pos)));
-        },
-    }
-    return self.pixels.get(pos);
+    const p = convertToPoint(pos);
+    return self.pixels.get(p);
 }
 
 pub fn update(self: *Self) void {

@@ -14,7 +14,6 @@ zig build run
 ```
 
 ### TODO
-- [ ] Add line tool
 - [ ] Add fill tool
 - [ ] Add animations
 - [ ] Export animations
