@@ -82,7 +82,7 @@ pub fn init() Self {
 
     return .{
         .color_picker = Dragable(*rl.Color).init(
-            .{ .x = 10, .y = 10, .width = 200, .height = 200 },
+            .{ .x = 200, .y = 10, .width = 200, .height = 200 },
             .mouse_button_middle,
             struct {
                 fn callback(rect: rl.Rectangle, arg: *rl.Color) void {
