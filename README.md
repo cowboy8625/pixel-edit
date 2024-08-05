@@ -14,10 +14,20 @@ zig build run
 ```
 
 ### TODO
-- [ ] Load images from files
 - [ ] Add animations
 - [ ] Animations - display one frame at a time to a side by side of each other and make them editable
 
 - [ ] World UI scaling with camera
 - [ ] TextInput add cursor movement with arrow keys
 - [ ] Ui implementation for buttons on a grid.
+
+#### File Manager
+- [ ] Create Folder button
+- [ ] move left and right in text input with cursor
+- [ ] Load image mode
+- [ ] clicking on a file will put the name in the text input bar
+- [ ] clicking on a folder will open that folder and load its contents
+- [ ] Load images from files
+
+- [ ] Filter only images
+

@@ -42,7 +42,7 @@ pub fn main() !void {
     var context = Context.init();
     defer context.deinit();
 
-    // guiSetup();
+    guiSetup();
 
     var camera = rl.Camera2D{
         .offset = rl.Vector2{
@@ -287,12 +287,12 @@ fn guiSetup() void {
     rg.guiSetStyle(
         cast(i32, rg.GuiControl.default),
         cast(i32, rg.GuiDefaultProperty.text_size),
-        30,
+        20,
     );
 
     rg.guiSetStyle(
         cast(i32, rg.GuiControl.default),
         cast(i32, rg.GuiControlProperty.text_color_normal),
-        rl.Color.white.toInt(),
+        rl.Color.black.toInt(),
     );
 }

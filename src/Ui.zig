@@ -84,6 +84,15 @@ pub fn init(menu_rect: rl.Rectangle) Self {
     };
 
     grid.push(Button(*Context).initWithTextureNoVec(
+        assets.loadTexture(assets.LOAD_ICON),
+        struct {
+            fn callback(arg: *Context) void {
+                arg.file_manager_is_open = !arg.file_manager_is_open;
+            }
+        }.callback,
+    ));
+
+    grid.push(Button(*Context).initWithTextureNoVec(
         assets.loadTexture(assets.SAVE_ICON),
         struct {
             fn callback(arg: *Context) void {
