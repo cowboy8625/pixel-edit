@@ -9,10 +9,7 @@ const cast = utils.cast;
 const Context = @import("Context.zig");
 const handleCliArgs = @import("args.zig").handleCliArgs;
 const algorithms = @import("algorithms.zig");
-
 const Button = @import("Button.zig").Button;
-
-const Brush = @import("Brush.zig");
 
 test {
     _ = @import("Canvas.zig");
@@ -21,7 +18,6 @@ test {
 }
 
 pub fn main() !void {
-    var context = Context{};
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
@@ -43,6 +39,9 @@ pub fn main() !void {
     rl.initWindow(screen_width, screen_height, "Pixel Edit");
     defer rl.closeWindow();
 
+    var context = Context.init();
+    defer context.deinit();
+
     // guiSetup();
 
     var camera = rl.Camera2D{
@@ -55,8 +54,6 @@ pub fn main() !void {
         .zoom = 1,
     };
 
-    var brush = Brush.init();
-    defer brush.deinit();
     var ui = Ui.init(.{ .x = 0, .y = 0, .width = 110, .height = screen_height });
     defer ui.deinit();
 
@@ -74,8 +71,8 @@ pub fn main() !void {
         const worldMosusePosition = rl.getScreenToWorld2D(pos, camera);
 
         ui.file_manager.save(&canvas);
-        const gui_active = try ui.update(pos, &context);
-        if (!gui_active and
+        try ui.update(pos, &context);
+        if (!context.gui_active and
             rl.checkCollisionPointRec(worldMosusePosition, canvas.rect) and
             rl.isMouseButtonDown(.mouse_button_middle))
         {
@@ -90,10 +87,12 @@ pub fn main() !void {
         change_canvas_width.update(worldMosusePosition, &canvas.size_in_pixels.x);
         change_canvas_height.update(worldMosusePosition, &canvas.size_in_pixels.y);
 
-        if (!gui_active and rl.checkCollisionPointRec(worldMosusePosition, canvas.rect)) {
+        if (!context.gui_active and rl.checkCollisionPointRec(worldMosusePosition, canvas.rect)) {
+            rl.hideCursor();
+            context.brush.showOutline();
             switch (context.mode) {
                 .Draw => if (rl.isMouseButtonDown(.mouse_button_left)) {
-                    try canvas.insert(worldMosusePosition.divide(canvas.cell_size), brush.color);
+                    try canvas.insert(worldMosusePosition.divide(canvas.cell_size), context.brush.color);
                     context.last_cell_position = worldMosusePosition;
                 } else if (rl.isMouseButtonDown(.mouse_button_right)) {
                     canvas.remove(worldMosusePosition.divide(canvas.cell_size));
@@ -101,22 +100,22 @@ pub fn main() !void {
                 .Line => if (rl.isMouseButtonDown(.mouse_button_left)) {
                     context.last_cell_position = worldMosusePosition;
                     for (canvas_overlay_pixels.items) |pixel| {
-                        try canvas.insert(pixel, brush.color);
+                        try canvas.insert(pixel, context.brush.color);
                     }
                     canvas_overlay_pixels.clearRetainingCapacity();
                 },
                 .Fill => if (rl.isMouseButtonPressed(.mouse_button_left)) {
                     const x = cast(usize, @divFloor(worldMosusePosition.x, canvas.cell_size.x));
                     const y = cast(usize, @divFloor(worldMosusePosition.y, canvas.cell_size.y));
-                    try algorithms.floodFill(allocator, &canvas, brush, .{ .x = x, .y = y });
+                    try algorithms.floodFill(allocator, &canvas, context.brush, .{ .x = x, .y = y });
                 },
             }
         } else {
-            brush.hideOutline();
+            context.brush.hideOutline();
             rl.showCursor();
         }
 
-        if (context.mode == .Line) {
+        if (context.mode == .Line and rl.checkCollisionPointRec(worldMosusePosition, canvas.rect)) {
             canvas_overlay_pixels.clearRetainingCapacity();
             const x1 = cast(i32, @divFloor(context.last_cell_position.x, canvas.cell_size.x));
             const y1 = cast(i32, @divFloor(context.last_cell_position.y, canvas.cell_size.y));
@@ -137,16 +136,18 @@ pub fn main() !void {
         change_canvas_width.draw(canvas.size_in_pixels.x);
         change_canvas_height.draw(canvas.size_in_pixels.y);
         canvas.draw();
-        for (canvas_overlay_pixels.items) |p| {
-            const rect = .{
-                .x = p.x * canvas.cell_size.x,
-                .y = p.y * canvas.cell_size.y,
-                .width = canvas.cell_size.x,
-                .height = canvas.cell_size.y,
-            };
-            rl.drawRectangleRec(rect, rl.Color.light_gray);
+        if (context.mode == .Line) {
+            for (canvas_overlay_pixels.items) |p| {
+                const rect = .{
+                    .x = p.x * canvas.cell_size.x,
+                    .y = p.y * canvas.cell_size.y,
+                    .width = canvas.cell_size.x,
+                    .height = canvas.cell_size.y,
+                };
+                rl.drawRectangleRec(rect, rl.Color.light_gray);
+            }
         }
-        brush.draw(worldMosusePosition, canvas.cell_size);
+        context.brush.draw(worldMosusePosition, canvas.cell_size);
         if (context.draw_grid) {
             drawGrid(canvas.size_in_pixels, canvas.cell_size);
         }
@@ -154,7 +155,7 @@ pub fn main() !void {
         rl.endMode2D();
         // -------    GUI     -------
 
-        try ui.draw(&brush.color);
+        try ui.draw(&context);
 
         // -------  END GUI   -------
         // -------  END DRAW  -------

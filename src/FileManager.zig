@@ -7,6 +7,7 @@ const cast = utils.cast;
 const Button = @import("Button.zig").Button;
 const TextInput = @import("TextInput.zig");
 const Canvas = @import("Canvas.zig");
+const Context = @import("Context.zig");
 
 const Self = @This();
 
@@ -73,15 +74,16 @@ pub fn save(self: *Self, canvas: *Canvas) void {
     canvas.save(path);
 }
 
-pub fn update(self: *Self, mouse_pos: rl.Vector2) !bool {
+pub fn update(self: *Self, mouse_pos: rl.Vector2, context: *Context) !bool {
     var active = false;
-    if (!self.is_open) return active;
+    self.is_open = context.file_manager_is_open;
+    if (!context.file_manager_is_open) return active;
     if (rl.checkCollisionPointRec(mouse_pos, self.rect)) {
         active = true;
     }
 
     _ = self.save_button.update(mouse_pos, &self.close_with_picked_file);
-    _ = self.cancel_button.update(mouse_pos, &self.is_open);
+    _ = self.cancel_button.update(mouse_pos, &context.file_manager_is_open);
     _ = self.text_input.update(mouse_pos);
     return active;
 }

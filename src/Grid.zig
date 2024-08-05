@@ -9,48 +9,39 @@ pub fn Grid(comptime T: type, comptime W: comptime_int, comptime H: comptime_int
 
         items: [W * H]Button(T) = undefined,
         len: usize = 0,
-
-        pub fn init() Self {
-            return .{};
-        }
+        update_callback: (*const fn (*Self, rl.Vector2, T) anyerror!void),
+        draw_callback: (*const fn (*Self, rl.Vector2) anyerror!void),
+        deinit_callback: (*const fn (*Self) void),
 
         pub fn deinit(self: *Self) void {
-            var iter = self.iterator();
-            while (iter.next()) |item| {
-                item.deinit();
-            }
+            self.deinit_callback(self);
         }
 
-        pub fn push(self: *Self, item: T) void {
+        pub fn update(self: *Self, mouse_pos: rl.Vector2, args: T) anyerror!void {
+            try self.update_callback(self, mouse_pos, args);
+        }
+        pub fn draw(self: *Self, pos: rl.Vector2) anyerror!void {
+            try self.draw_callback(self, pos);
+        }
+
+        pub fn push(self: *Self, item: Button(T)) void {
             self.items[self.len] = item;
             self.len += 1;
         }
 
-        pub fn update(self: *Self, mouse_pos: rl.Vector2, items: [W * H]?T) void {
-            var iter = self.iterator();
-            var i: usize = 0;
-            while (iter.next()) |item| {
-                const t = if (items[i]) |t| t else continue;
-
-                item.update(mouse_pos, t);
-            }
-        }
-
-        pub fn draw(self: *Self) void {}
-
         pub fn iterator(self: *Self) Iterator {
-            return .{ .items = self.items, .len = self.len };
+            return .{ .grid = self, .len = self.len };
         }
 
         const Iterator = struct {
-            items: [W * H]T,
+            grid: *Self,
             index: usize = 0,
             len: usize,
-            pub fn next(self: *Iterator) ?T {
+            pub fn next(self: *Iterator) ?*Button(T) {
                 if (self.index >= self.len) return null;
                 const index = self.index;
                 self.index += 1;
-                return self.items[index];
+                return &self.grid.items[index];
             }
         };
     };

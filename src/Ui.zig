@@ -10,22 +10,134 @@ const Dragable = @import("Dragable.zig").Dragable;
 const MenuBar = @import("MenuBar.zig");
 const Button = @import("Button.zig").Button;
 const FileManager = @import("FileManager.zig");
+const Grid = @import("Grid.zig").Grid;
+const Widget = @import("Widget.zig").Widget;
 
+// width in buttons
+const WIDTH = 5;
+// height in buttons
+const HEIGHT = 20;
+const UiGrid = Grid(*Context, WIDTH, HEIGHT);
 const Self = @This();
+
 menu_rect: rl.Rectangle,
-color_picker: Dragable(*rl.Color),
-color_picker_is_active: bool = false,
-toggle_file_picker: Button(*bool),
+grid: UiGrid,
 open_menu_button: Button(*bool),
 is_menu_open: bool = false,
-toggle_grid: Button(*bool),
-file_manager_open_button: Button(*bool),
 file_manager: FileManager,
-line_tool_button: Button(*Context.Mode),
-bucket_tool_button: Button(*Context.Mode),
+color_picker: Dragable(*rl.Color),
+
+// color_picker: Dragable(*rl.Color),
+// color_picker_is_active: bool = false,
 
 pub fn init(menu_rect: rl.Rectangle) Self {
-    var button = Button(*bool).initWithTexture(
+    var grid = UiGrid{
+        .update_callback = struct {
+            fn update(grid: *UiGrid, mouse_pos: rl.Vector2, context: *Context) anyerror!void {
+                var active = false;
+                var iter = grid.iterator();
+
+                while (iter.next()) |*widget| {
+                    if (widget.*.update(mouse_pos, context)) {
+                        active = true;
+                    }
+                }
+                context.gui_active = active;
+            }
+        }.update,
+        .draw_callback = struct {
+            fn cords(i: usize) rl.Vector2 {
+                return .{
+                    .x = cast(f32, @mod(i, WIDTH)),
+                    .y = cast(f32, @divFloor(i, HEIGHT)),
+                };
+            }
+            fn draw(grid: *UiGrid, pos: rl.Vector2) anyerror!void {
+                var iter = grid.iterator();
+                var i: usize = 0;
+                const padding = 5;
+                const item_size = 16;
+
+                while (iter.next()) |*widget| {
+                    const row = cast(f32, @divFloor(i, WIDTH));
+                    const col = cast(f32, @mod(i, WIDTH));
+
+                    const widget_pos = rl.Vector2{
+                        .x = pos.x + (col * (item_size + padding)),
+                        .y = pos.y + (row * (item_size + padding)),
+                    };
+
+                    widget.*.pos = widget_pos;
+                    widget.*.draw();
+                    i += 1;
+                }
+            }
+        }.draw,
+        .deinit_callback = struct {
+            fn deinit(grid: *UiGrid) void {
+                var iter = grid.iterator();
+                while (iter.next()) |*widget| {
+                    widget.*.deinit();
+                }
+            }
+        }.deinit,
+    };
+
+    grid.push(Button(*Context).initWithTextureNoVec(
+        assets.loadTexture(assets.SAVE_ICON),
+        struct {
+            fn callback(arg: *Context) void {
+                arg.file_manager_is_open = !arg.file_manager_is_open;
+            }
+        }.callback,
+    ));
+
+    grid.push(Button(*Context).initWithTextureNoVec(
+        assets.loadTexture(assets.GRID_ICON),
+        struct {
+            fn callback(arg: *Context) void {
+                arg.draw_grid = !arg.draw_grid;
+            }
+        }.callback,
+    ));
+
+    grid.push(Button(*Context).initWithTextureNoVec(
+        assets.loadTexture(assets.COLOR_PICKER_ICON),
+        struct {
+            fn callback(arg: *Context) void {
+                arg.color_picker_is_open = !arg.color_picker_is_open;
+            }
+        }.callback,
+    ));
+
+    grid.push(Button(*Context).initWithTextureNoVec(
+        assets.loadTexture(assets.LINE_TOOL_ICON),
+        struct {
+            fn callback(arg: *Context) void {
+                arg.mode = .Line;
+            }
+        }.callback,
+    ));
+
+    grid.push(Button(*Context).initWithTextureNoVec(
+        assets.loadTexture(assets.BUCKET_TOOL_ICON),
+        struct {
+            fn callback(arg: *Context) void {
+                arg.mode = .Fill;
+            }
+        }.callback,
+    ));
+
+    grid.push(Button(*Context).initWithTextureNoVec(
+        assets.loadTexture(assets.PENCIL_TOOL_ICON),
+        struct {
+            fn callback(arg: *Context) void {
+                arg.mode = .Draw;
+            }
+        }.callback,
+    ));
+
+    var open_menu_button = Button(*bool).initWithTexture(
         assets.loadTexture(assets.MENU_ICON),
         .{ .x = 2, .y = 2 },
         struct {
@@ -34,7 +146,8 @@ pub fn init(menu_rect: rl.Rectangle) Self {
             }
         }.callback,
     );
-    button.setHitBox(struct {
+
+    open_menu_button.setHitBox(struct {
         fn callback(rect: rl.Rectangle) rl.Rectangle {
             return .{
                 .x = rect.x + 10,
@@ -44,73 +157,13 @@ pub fn init(menu_rect: rl.Rectangle) Self {
             };
         }
     }.callback);
-    errdefer button.deinit();
-
-    const toggle_grid = Button(*bool).initWithTexture(
-        assets.loadTexture(assets.GRID_ICON),
-        .{
-            .x = 2,
-            .y = button.pos.y + button.hitbox.height + 20,
-        },
-        struct {
-            fn callback(arg: *bool) void {
-                arg.* = !arg.*;
-            }
-        }.callback,
-    );
-    const file_manager_open_button = Button(*bool).initWithTexture(
-        assets.loadTexture(assets.SAVE_ICON),
-        .{
-            .x = toggle_grid.pos.x + toggle_grid.hitbox.width + 5,
-            .y = toggle_grid.pos.y,
-        },
-        struct {
-            fn callback(arg: *bool) void {
-                arg.* = !arg.*;
-            }
-        }.callback,
-    );
-    const toggle_file_picker = Button(*bool).initWithTexture(
-        assets.loadTexture(assets.COLOR_PICKER_ICON),
-        .{
-            .x = file_manager_open_button.pos.x + file_manager_open_button.hitbox.width + 5,
-            .y = file_manager_open_button.pos.y,
-        },
-        struct {
-            fn callback(arg: *bool) void {
-                arg.* = !arg.*;
-            }
-        }.callback,
-    );
-
-    const line_tool_button = Button(*Context.Mode).initWithTexture(
-        assets.loadTexture(assets.LINE_TOOL_ICON),
-        .{
-            .x = toggle_file_picker.pos.x + toggle_file_picker.hitbox.width + 5,
-            .y = toggle_file_picker.pos.y,
-        },
-        struct {
-            fn callback(arg: *Context.Mode) void {
-                arg.* = .Line;
-            }
-        }.callback,
-    );
-
-    const bucket_tool_button = Button(*Context.Mode).initWithTexture(
-        assets.loadTexture(assets.BUCKET_TOOL_ICON),
-        .{
-            .x = line_tool_button.pos.x + line_tool_button.hitbox.width + 5,
-            .y = line_tool_button.pos.y,
-        },
-        struct {
-            fn callback(arg: *Context.Mode) void {
-                arg.* = .Fill;
-            }
-        }.callback,
-    );
+    errdefer open_menu_button.deinit();
 
     return .{
+        .grid = grid,
+        .open_menu_button = open_menu_button,
         .menu_rect = menu_rect,
+        .file_manager = FileManager.init(),
         .color_picker = Dragable(*rl.Color).init(
             .{ .x = 200, .y = 10, .width = 200, .height = 200 },
             .mouse_button_middle,
@@ -120,23 +173,25 @@ pub fn init(menu_rect: rl.Rectangle) Self {
                 }
             }.callback,
         ),
-        .open_menu_button = button,
-        .toggle_grid = toggle_grid,
-        .toggle_file_picker = toggle_file_picker,
-        .file_manager = FileManager.init(),
-        .file_manager_open_button = file_manager_open_button,
-        .line_tool_button = line_tool_button,
-        .bucket_tool_button = bucket_tool_button,
     };
+    // ----------
+
+    // return .{
+    //     .menu_rect = menu_rect,
+    //     .open_menu_button = button,
+    //     .toggle_grid = toggle_grid,
+    //     .toggle_file_picker = toggle_file_picker,
+    //     .file_manager = FileManager.init(),
+    //     .file_manager_open_button = file_manager_open_button,
+    //     .line_tool_button = line_tool_button,
+    //     .bucket_tool_button = bucket_tool_button,
+    // };
 }
 
 pub fn deinit(self: *Self) void {
+    self.grid.deinit();
     self.open_menu_button.deinit();
-    self.toggle_grid.deinit();
-    self.toggle_file_picker.deinit();
     self.file_manager.deinit();
-    self.file_manager_open_button.deinit();
-    self.line_tool_button.deinit();
 }
 
 fn keyboardHandler(_: *Self, context: *Context) void {
@@ -147,59 +202,45 @@ fn keyboardHandler(_: *Self, context: *Context) void {
     }
 }
 
-pub fn update(self: *Self, mouse_pos: rl.Vector2, context: *Context) !bool {
-    var active = false;
+pub fn update(self: *Self, mouse_pos: rl.Vector2, context: *Context) !void {
+    if (rl.checkCollisionPointRec(mouse_pos, self.menu_rect) and self.is_menu_open) {
+        context.gui_active = true;
+    }
+    try self.grid.update(mouse_pos, context);
+    _ = self.open_menu_button.update(mouse_pos, &self.is_menu_open);
     self.keyboardHandler(context);
 
-    if (self.color_picker_is_active) {
-        active = self.color_picker.update(mouse_pos);
+    if (try self.file_manager.update(mouse_pos, context)) {
+        context.gui_active = true;
     }
 
-    if (self.open_menu_button.update(mouse_pos, &self.is_menu_open)) {
-        active = true;
+    if (self.color_picker.update(mouse_pos)) {
+        context.gui_active = true;
     }
-
-    if (try self.file_manager.update(mouse_pos)) {
-        active = true;
-    }
-
-    if (!self.is_menu_open) return active;
-
-    if (self.toggle_grid.update(mouse_pos, &context.draw_grid)) {
-        active = true;
-    }
-
-    if (self.file_manager_open_button.update(mouse_pos, &self.file_manager.is_open)) {
-        active = true;
-    }
-
-    if (self.toggle_file_picker.update(mouse_pos, &self.color_picker_is_active)) {
-        active = true;
-    }
-
-    if (self.line_tool_button.update(mouse_pos, &context.mode)) {
-        active = true;
-    }
-
-    if (self.bucket_tool_button.update(mouse_pos, &context.mode)) {
-        active = true;
-    }
-    return active;
 }
 
-pub fn draw(self: *Self, brush_color: *rl.Color) !void {
-    drawMenu(self);
-    if (self.color_picker_is_active) self.color_picker.draw(brush_color);
-    self.open_menu_button.draw();
+// FIXME: Remove the passing of context
+pub fn draw(self: *Self, context: *Context) !void {
+    try drawMenu(self, context);
     try self.file_manager.draw();
+    self.open_menu_button.draw();
+    if (context.color_picker_is_open) {
+        self.color_picker.draw(&context.brush.color);
+    }
 }
 
-pub fn drawMenu(self: *Self) void {
+pub fn drawMenu(self: *Self, _: *Context) !void {
     if (!self.is_menu_open) return;
     _ = rl.drawRectangleRec(self.menu_rect, rl.Color.init(0x32, 0x30, 0x2f, 0xff));
-    self.toggle_grid.draw();
-    self.file_manager_open_button.draw();
-    self.toggle_file_picker.draw();
-    self.line_tool_button.draw();
-    self.bucket_tool_button.draw();
+
+    const pos = .{
+        .x = self.open_menu_button.pos.x,
+        .y = self.open_menu_button.pos.y + self.open_menu_button.hitbox.height + 20,
+    };
+    try self.grid.draw(pos);
+    // self.toggle_grid.draw();
+    // self.file_manager_open_button.draw();
+    // self.toggle_file_picker.draw();
+    // self.line_tool_button.draw();
+    // self.bucket_tool_button.draw();
 }

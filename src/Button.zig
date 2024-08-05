@@ -10,7 +10,7 @@ pub fn Button(comptime T: type) type {
 
         texture: ?rl.Texture2D,
         text: ?[]const u8,
-        pos: rl.Vector2,
+        pos: rl.Vector2 = .{ .x = 0, .y = 0 },
         hitbox: rl.Rectangle,
         font_size: f32,
         callback: (*const fn (T) void),
@@ -46,6 +46,10 @@ pub fn Button(comptime T: type) type {
                 .font_size = font_size,
                 .callback = callback,
             };
+        }
+
+        pub fn initWithTextureNoVec(texture: rl.Texture2D, callback: (*const fn (T) void)) Self {
+            return Self.init(null, texture, .{ .x = 0, .y = 0 }, DEFAULT_FONT_SIZE, callback);
         }
 
         pub fn initWithTexture(texture: rl.Texture2D, pos: rl.Vector2, callback: (*const fn (T) void)) Self {
@@ -90,6 +94,12 @@ pub fn Button(comptime T: type) type {
                 .height = cast(f32, self.texture.?.height),
             };
             const color = if (self.is_hovered) self.hover_color else self.text_color;
+            self.hitbox = .{
+                .x = self.pos.x,
+                .y = self.pos.y,
+                .width = self.hitbox.width,
+                .height = self.hitbox.height,
+            };
             rl.drawTexturePro(self.texture.?, origin, self.hitbox, .{ .x = 0, .y = 0 }, 0, color);
         }
 
