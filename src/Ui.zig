@@ -172,7 +172,14 @@ pub fn init(menu_rect: rl.Rectangle) Self {
         .grid = grid,
         .open_menu_button = open_menu_button,
         .menu_rect = menu_rect,
-        .file_manager = FileManager.init(),
+        .file_manager = FileManager.init("Save", struct {
+            fn action(self: *FileManager, context: *Context) void {
+                self.close_with_picked_file = false;
+                self.is_open = false;
+                const path: []const u8 = self.text_input.text.chars[0..self.text_input.text.len];
+                context.save_file_path = path;
+            }
+        }.action),
         .color_picker = Dragable(*rl.Color).init(
             .{ .x = 200, .y = 10, .width = 200, .height = 200 },
             .mouse_button_middle,
@@ -183,18 +190,6 @@ pub fn init(menu_rect: rl.Rectangle) Self {
             }.callback,
         ),
     };
-    // ----------
-
-    // return .{
-    //     .menu_rect = menu_rect,
-    //     .open_menu_button = button,
-    //     .toggle_grid = toggle_grid,
-    //     .toggle_file_picker = toggle_file_picker,
-    //     .file_manager = FileManager.init(),
-    //     .file_manager_open_button = file_manager_open_button,
-    //     .line_tool_button = line_tool_button,
-    //     .bucket_tool_button = bucket_tool_button,
-    // };
 }
 
 pub fn deinit(self: *Self) void {

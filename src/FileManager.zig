@@ -8,27 +8,29 @@ const Button = @import("Button.zig").Button;
 const TextInput = @import("TextInput.zig");
 const Canvas = @import("Canvas.zig");
 const Context = @import("Context.zig");
+const ActionCallback = (*const fn (*Self, *Context) void);
 
 const Self = @This();
 
-save_button: Button(*bool),
+action_button: Button(*bool),
 cancel_button: Button(*bool),
+action: ActionCallback,
+text_input: TextInput,
+rect: rl.Rectangle,
 close_with_picked_file: bool = false,
 is_open: bool = false,
 picked_file: [1024]u8 = [_]u8{0} ** 1024,
 picked_file_length: usize = 0,
-rect: rl.Rectangle,
-text_input: TextInput,
 
-pub fn init() Self {
+pub fn init(action_name: []const u8, action: ActionCallback) Self {
     const rect: rl.Rectangle = .{
         .x = 100,
         .y = 100,
         .width = 400,
         .height = 400,
     };
-    var save_button = Button(*bool).initWithText(
-        "Save",
+    var action_button = Button(*bool).initWithText(
+        action_name,
         .{
             .x = rect.x + rect.width - 75,
             .y = rect.y + rect.height - 25,
@@ -39,7 +41,7 @@ pub fn init() Self {
             }
         }.callback,
     );
-    save_button.setTextColor(rl.Color.black);
+    action_button.setTextColor(rl.Color.black);
     var cancel_button = Button(*bool).initWithText(
         "Cancel",
         .{
@@ -57,22 +59,15 @@ pub fn init() Self {
     const text_input = TextInput.init(rect.x + 10, rect.y + rect.height - 30, 200, 20);
 
     return .{
-        .text_input = text_input,
-        .save_button = save_button,
+        .action_button = action_button,
         .cancel_button = cancel_button,
+        .action = action,
+        .text_input = text_input,
         .rect = rect,
     };
 }
 
 pub fn deinit(_: *Self) void {}
-
-pub fn save(self: *Self, canvas: *Canvas) void {
-    if (!self.close_with_picked_file) return;
-    self.close_with_picked_file = false;
-    self.is_open = false;
-    const path: []const u8 = self.text_input.text.chars[0..self.text_input.text.len];
-    canvas.save(path);
-}
 
 pub fn update(self: *Self, mouse_pos: rl.Vector2, context: *Context) !bool {
     var active = false;
@@ -82,9 +77,11 @@ pub fn update(self: *Self, mouse_pos: rl.Vector2, context: *Context) !bool {
         active = true;
     }
 
-    _ = self.save_button.update(mouse_pos, &self.close_with_picked_file);
+    _ = self.action_button.update(mouse_pos, &self.close_with_picked_file);
     _ = self.cancel_button.update(mouse_pos, &context.file_manager_is_open);
     _ = self.text_input.update(mouse_pos);
+    if (!self.close_with_picked_file) return active;
+    self.action(self, context);
     return active;
 }
 
@@ -135,6 +132,6 @@ pub fn draw(self: *Self) !void {
     rl.drawRectangleRoundedLines(self.rect, 0.05, 10, rl.Color.black);
     try self.drawNames();
     self.cancel_button.draw();
-    self.save_button.draw();
+    self.action_button.draw();
     self.text_input.draw();
 }

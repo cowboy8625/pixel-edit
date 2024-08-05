@@ -16,6 +16,7 @@ gui_active: bool = false,
 color_picker_is_open: bool = false,
 
 // DATA
+save_file_path: ?[]const u8 = null,
 last_cell_position: rl.Vector2 = .{ .x = 0, .y = 0 },
 mode: Mode = .Draw,
 brush: Brush,

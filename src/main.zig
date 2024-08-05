@@ -70,7 +70,9 @@ pub fn main() !void {
         const pos = rl.getMousePosition();
         const worldMosusePosition = rl.getScreenToWorld2D(pos, camera);
 
-        ui.file_manager.save(&canvas);
+        if (context.save_file_path) |path| {
+            canvas.save(path);
+        }
         try ui.update(pos, &context);
         if (!context.gui_active and
             rl.checkCollisionPointRec(worldMosusePosition, canvas.rect) and
