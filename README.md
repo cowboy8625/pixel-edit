@@ -14,9 +14,9 @@ zig build run
 ```
 
 ### TODO
-- [ ] Add fill tool
+- [ ] Load images from files
 - [ ] Add animations
-- [ ] Export animations
+- [ ] Animations - display one frame at a time to a side by side of each other and make them editable
 
 - [ ] World UI scaling with camera
 - [ ] TextInput add cursor movement with arrow keys
