@@ -229,6 +229,12 @@ pub fn update(self: *Self, mouse_pos: rl.Vector2, context: *Context) !void {
     }
     context.flags.save_file_manager_is_open = self.save_file_manager.is_open;
 
+    self.load_file_manager.is_open = context.flags.load_file_manager_is_open;
+    if (try self.load_file_manager.update(mouse_pos, context)) {
+        context.flags.gui_active = true;
+    }
+    context.flags.load_file_manager_is_open = self.load_file_manager.is_open;
+
     if (self.color_picker.update(mouse_pos)) {
         context.flags.gui_active = true;
     }
@@ -238,6 +244,7 @@ pub fn update(self: *Self, mouse_pos: rl.Vector2, context: *Context) !void {
 pub fn draw(self: *Self, context: *Context) !void {
     try drawMenu(self, context);
     try self.save_file_manager.draw();
+    try self.load_file_manager.draw();
     self.open_menu_button.draw();
     if (context.flags.color_picker_is_open) {
         self.color_picker.draw(&context.brush.color);
