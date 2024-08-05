@@ -25,6 +25,7 @@ grid: UiGrid,
 open_menu_button: Button(*bool),
 is_menu_open: bool = false,
 save_file_manager: FileManager,
+load_file_manager: FileManager,
 color_picker: Dragable(*rl.Color),
 
 // color_picker: Dragable(*rl.Color),
@@ -42,7 +43,7 @@ pub fn init(menu_rect: rl.Rectangle) Self {
                         active = true;
                     }
                 }
-                context.gui_active = active;
+                context.flags.gui_active = active;
             }
         }.update,
         .draw_callback = struct {
@@ -87,7 +88,7 @@ pub fn init(menu_rect: rl.Rectangle) Self {
         assets.loadTexture(assets.LOAD_ICON),
         struct {
             fn callback(arg: *Context) void {
-                arg.file_manager_is_open = !arg.file_manager_is_open;
+                arg.flags.load_file_manager_is_open = !arg.flags.load_file_manager_is_open;
             }
         }.callback,
     ));
@@ -96,7 +97,7 @@ pub fn init(menu_rect: rl.Rectangle) Self {
         assets.loadTexture(assets.SAVE_ICON),
         struct {
             fn callback(arg: *Context) void {
-                arg.file_manager_is_open = !arg.file_manager_is_open;
+                arg.flags.save_file_manager_is_open = !arg.flags.save_file_manager_is_open;
             }
         }.callback,
     ));
@@ -105,7 +106,7 @@ pub fn init(menu_rect: rl.Rectangle) Self {
         assets.loadTexture(assets.GRID_ICON),
         struct {
             fn callback(arg: *Context) void {
-                arg.draw_grid = !arg.draw_grid;
+                arg.flags.draw_grid = !arg.flags.draw_grid;
             }
         }.callback,
     ));
@@ -114,7 +115,7 @@ pub fn init(menu_rect: rl.Rectangle) Self {
         assets.loadTexture(assets.COLOR_PICKER_ICON),
         struct {
             fn callback(arg: *Context) void {
-                arg.color_picker_is_open = !arg.color_picker_is_open;
+                arg.flags.color_picker_is_open = !arg.flags.color_picker_is_open;
             }
         }.callback,
     ));
@@ -180,6 +181,14 @@ pub fn init(menu_rect: rl.Rectangle) Self {
                 context.save_file_path = path;
             }
         }.action),
+        .load_file_manager = FileManager.init("Load", struct {
+            fn action(self: *FileManager, context: *Context) void {
+                self.close_with_picked_file = false;
+                self.is_open = false;
+                const path: []const u8 = self.text_input.text.chars[0..self.text_input.text.len];
+                context.save_file_path = path;
+            }
+        }.action),
         .color_picker = Dragable(*rl.Color).init(
             .{ .x = 200, .y = 10, .width = 200, .height = 200 },
             .mouse_button_middle,
@@ -208,18 +217,20 @@ fn keyboardHandler(_: *Self, context: *Context) void {
 
 pub fn update(self: *Self, mouse_pos: rl.Vector2, context: *Context) !void {
     if (rl.checkCollisionPointRec(mouse_pos, self.menu_rect) and self.is_menu_open) {
-        context.gui_active = true;
+        context.flags.gui_active = true;
     }
     try self.grid.update(mouse_pos, context);
     _ = self.open_menu_button.update(mouse_pos, &self.is_menu_open);
     self.keyboardHandler(context);
 
+    self.save_file_manager.is_open = context.flags.save_file_manager_is_open;
     if (try self.save_file_manager.update(mouse_pos, context)) {
-        context.gui_active = true;
+        context.flags.gui_active = true;
     }
+    context.flags.save_file_manager_is_open = self.save_file_manager.is_open;
 
     if (self.color_picker.update(mouse_pos)) {
-        context.gui_active = true;
+        context.flags.gui_active = true;
     }
 }
 
@@ -228,7 +239,7 @@ pub fn draw(self: *Self, context: *Context) !void {
     try drawMenu(self, context);
     try self.save_file_manager.draw();
     self.open_menu_button.draw();
-    if (context.color_picker_is_open) {
+    if (context.flags.color_picker_is_open) {
         self.color_picker.draw(&context.brush.color);
     }
 }

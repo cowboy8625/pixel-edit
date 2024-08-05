@@ -9,11 +9,15 @@ pub const Mode = enum {
 
 const Self = @This();
 
-// FLAGS
-draw_grid: bool = false,
-file_manager_is_open: bool = false,
-gui_active: bool = false,
-color_picker_is_open: bool = false,
+const Flags = packed struct {
+    draw_grid: bool = false,
+    save_file_manager_is_open: bool = false,
+    load_file_manager_is_open: bool = false,
+    gui_active: bool = false,
+    color_picker_is_open: bool = false,
+};
+
+flags: Flags = .{},
 
 // DATA
 save_file_path: ?[]const u8 = null,

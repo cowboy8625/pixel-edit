@@ -75,7 +75,7 @@ pub fn main() !void {
             context.save_file_path = null;
         }
         try ui.update(pos, &context);
-        if (!context.gui_active and
+        if (!context.flags.gui_active and
             rl.checkCollisionPointRec(worldMosusePosition, canvas.rect) and
             rl.isMouseButtonDown(.mouse_button_middle))
         {
@@ -90,7 +90,7 @@ pub fn main() !void {
         change_canvas_width.update(worldMosusePosition, &canvas.size_in_pixels.x);
         change_canvas_height.update(worldMosusePosition, &canvas.size_in_pixels.y);
 
-        if (!context.gui_active and rl.checkCollisionPointRec(worldMosusePosition, canvas.rect)) {
+        if (!context.flags.gui_active and rl.checkCollisionPointRec(worldMosusePosition, canvas.rect)) {
             rl.hideCursor();
             context.brush.showOutline();
             switch (context.mode) {
@@ -151,7 +151,7 @@ pub fn main() !void {
             }
         }
         context.brush.draw(worldMosusePosition, canvas.cell_size);
-        if (context.draw_grid) {
+        if (context.flags.draw_grid) {
             drawGrid(canvas.size_in_pixels, canvas.cell_size);
         }
 
