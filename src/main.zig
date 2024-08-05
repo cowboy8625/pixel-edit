@@ -72,6 +72,7 @@ pub fn main() !void {
 
         if (context.save_file_path) |path| {
             canvas.save(path);
+            context.save_file_path = null;
         }
         try ui.update(pos, &context);
         if (!context.gui_active and

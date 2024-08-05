@@ -24,7 +24,7 @@ menu_rect: rl.Rectangle,
 grid: UiGrid,
 open_menu_button: Button(*bool),
 is_menu_open: bool = false,
-file_manager: FileManager,
+save_file_manager: FileManager,
 color_picker: Dragable(*rl.Color),
 
 // color_picker: Dragable(*rl.Color),
@@ -172,7 +172,7 @@ pub fn init(menu_rect: rl.Rectangle) Self {
         .grid = grid,
         .open_menu_button = open_menu_button,
         .menu_rect = menu_rect,
-        .file_manager = FileManager.init("Save", struct {
+        .save_file_manager = FileManager.init("Save", struct {
             fn action(self: *FileManager, context: *Context) void {
                 self.close_with_picked_file = false;
                 self.is_open = false;
@@ -195,7 +195,7 @@ pub fn init(menu_rect: rl.Rectangle) Self {
 pub fn deinit(self: *Self) void {
     self.grid.deinit();
     self.open_menu_button.deinit();
-    self.file_manager.deinit();
+    self.save_file_manager.deinit();
 }
 
 fn keyboardHandler(_: *Self, context: *Context) void {
@@ -214,7 +214,7 @@ pub fn update(self: *Self, mouse_pos: rl.Vector2, context: *Context) !void {
     _ = self.open_menu_button.update(mouse_pos, &self.is_menu_open);
     self.keyboardHandler(context);
 
-    if (try self.file_manager.update(mouse_pos, context)) {
+    if (try self.save_file_manager.update(mouse_pos, context)) {
         context.gui_active = true;
     }
 
@@ -226,7 +226,7 @@ pub fn update(self: *Self, mouse_pos: rl.Vector2, context: *Context) !void {
 // FIXME: Remove the passing of context
 pub fn draw(self: *Self, context: *Context) !void {
     try drawMenu(self, context);
-    try self.file_manager.draw();
+    try self.save_file_manager.draw();
     self.open_menu_button.draw();
     if (context.color_picker_is_open) {
         self.color_picker.draw(&context.brush.color);
