@@ -19,8 +19,8 @@ text_input: TextInput,
 rect: rl.Rectangle,
 close_with_picked_file: bool = false,
 is_open: bool = false,
-picked_file: [1024]u8 = [_]u8{0} ** 1024,
-picked_file_length: usize = 0,
+picked_file: [1024]u8 = [_]u8{ '.', '/' } ++ [_]u8{0} ** 1022,
+picked_file_length: usize = 2,
 
 pub fn init(action_name: []const u8, action: ActionCallback) Self {
     const rect: rl.Rectangle = .{
@@ -86,7 +86,7 @@ pub fn update(self: *Self, mouse_pos: rl.Vector2, context: *Context) !bool {
 
 fn drawNames(self: *Self) !void {
     var cwd = std.fs.cwd();
-    var dir = try cwd.openDir("./", .{ .iterate = true });
+    var dir = try cwd.openDir(self.picked_file[0..self.picked_file_length], .{ .iterate = true });
     defer dir.close();
 
     var iter = dir.iterate();
@@ -99,30 +99,47 @@ fn drawNames(self: *Self) !void {
     };
     while (try iter.next()) |entry| {
         switch (entry.kind) {
-            .file, .directory => {
-                const text: [*:0]const u8 = @ptrCast(entry.name);
-                rect.y = 100 + (20 * cast(f32, i) + 5);
-                if (cast(bool, rg.guiLabelButton(rect, text))) {
-                    self.picked_file_length = 0;
-                    for (entry.name) |c| {
-                        self.picked_file[self.picked_file_length] = c;
-                        self.picked_file_length += 1;
-                    }
-                    self.picked_file[self.picked_file_length] = 0;
-                }
-                const icon: rg.GuiIconName = if (entry.kind == .directory) .icon_folder else .icon_file;
-                rg.guiDrawIcon(
-                    @intFromEnum(icon),
-                    cast(i32, rect.x) - 20,
-                    cast(i32, rect.y),
-                    1,
-                    rl.Color.black,
-                );
+            .file => if (endsWithOneOf(entry.name, &.{ ".png", ".jpg" })) {
+                try self.drawName(&rect, i, entry);
+                i += 1;
+            },
+            .directory => {
+                try self.drawName(&rect, i, entry);
                 i += 1;
             },
             else => {},
         }
     }
+}
+
+fn endsWithOneOf(name: []const u8, list: []const []const u8) bool {
+    for (list) |item| {
+        if (std.mem.endsWith(u8, name, item)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+fn drawName(self: *Self, rect: *rl.Rectangle, i: usize, entry: std.fs.Dir.Entry) !void {
+    const text: [*:0]const u8 = @ptrCast(entry.name);
+    rect.y = 100 + (20 * cast(f32, i) + 5);
+    if (cast(bool, rg.guiLabelButton(rect.*, text))) {
+        self.picked_file[self.picked_file_length] = '/';
+        self.picked_file_length += 1;
+        for (entry.name) |c| {
+            self.picked_file[self.picked_file_length] = c;
+            self.picked_file_length += 1;
+        }
+    }
+    const icon: rg.GuiIconName = if (entry.kind == .directory) .icon_folder else .icon_file;
+    rg.guiDrawIcon(
+        @intFromEnum(icon),
+        cast(i32, rect.x) - 20,
+        cast(i32, rect.y),
+        1,
+        rl.Color.black,
+    );
 }
 
 pub fn draw(self: *Self) !void {
