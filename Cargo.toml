@@ -1,0 +1,8 @@
+[package]
+name = "pixel-edit"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+iced = { version = "0.12.1", features = ["canvas", "tokio", "debug"] }
+time = { version = "0.3", features = ["local-offset"] }
