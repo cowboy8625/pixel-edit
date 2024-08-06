@@ -65,6 +65,23 @@ pub fn save(self: *Self, path: []const u8) void {
     _ = rl.exportImage(image, cpath);
 }
 
+pub fn load(self: *Self, path: []const u8) !void {
+    const cpath: [*c]const u8 = @ptrCast(path);
+    const image = rl.loadImage(cpath);
+    defer rl.unloadImage(image);
+    self.clear();
+    self.size_in_pixels = .{
+        .x = cast(f32, image.width),
+        .y = cast(f32, image.height),
+    };
+    for (0..cast(usize, image.height)) |y| {
+        for (0..@intCast(image.width)) |x| {
+            const color = rl.getImageColor(image, cast(i32, x), cast(i32, y));
+            try self.insert(Point{ .x = x, .y = y }, color);
+        }
+    }
+}
+
 pub fn clear(self: *Self) void {
     self.pixels.clearRetainingCapacity();
 }

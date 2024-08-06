@@ -70,9 +70,12 @@ pub fn main() !void {
         const pos = rl.getMousePosition();
         const worldMosusePosition = rl.getScreenToWorld2D(pos, camera);
 
-        if (context.save_file_path) |path| {
-            canvas.save(path);
-            context.save_file_path = null;
+        if (context.path) |path| {
+            switch (context.path_action) {
+                .Save => canvas.save(path),
+                .Load => try canvas.load(path),
+            }
+            context.path = null;
         }
         try ui.update(pos, &context);
         if (!context.flags.gui_active and

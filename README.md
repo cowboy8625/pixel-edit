@@ -31,3 +31,7 @@ zig build run
 
 - [ ] Filter only images
 
+
+#### BUGS
+
+- All popups will just open when open tool menu

@@ -20,16 +20,13 @@ const HEIGHT = 20;
 const UiGrid = Grid(*Context, WIDTH, HEIGHT);
 const Self = @This();
 
+is_menu_open: bool = false,
 menu_rect: rl.Rectangle,
 grid: UiGrid,
 open_menu_button: Button(*bool),
-is_menu_open: bool = false,
 save_file_manager: FileManager,
 load_file_manager: FileManager,
 color_picker: Dragable(*rl.Color),
-
-// color_picker: Dragable(*rl.Color),
-// color_picker_is_active: bool = false,
 
 pub fn init(menu_rect: rl.Rectangle) Self {
     var grid = UiGrid{
@@ -178,7 +175,8 @@ pub fn init(menu_rect: rl.Rectangle) Self {
                 self.close_with_picked_file = false;
                 self.is_open = false;
                 const path: []const u8 = self.text_input.text.chars[0..self.text_input.text.len];
-                context.save_file_path = path;
+                context.path = path;
+                context.path_action = .Save;
             }
         }.action),
         .load_file_manager = FileManager.init("Load", struct {
@@ -186,7 +184,8 @@ pub fn init(menu_rect: rl.Rectangle) Self {
                 self.close_with_picked_file = false;
                 self.is_open = false;
                 const path: []const u8 = self.text_input.text.chars[0..self.text_input.text.len];
-                context.save_file_path = path;
+                context.path = path;
+                context.path_action = .Load;
             }
         }.action),
         .color_picker = Dragable(*rl.Color).init(
