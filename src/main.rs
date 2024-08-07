@@ -5,6 +5,10 @@ use iced::widget::{canvas, container};
 use iced::{
     Application, Color, Command, Element, Length, Point, Rectangle, Renderer, Settings, Size, Theme,
 };
+mod app_canvas;
+mod brush;
+use app_canvas::AppCanvas;
+use brush::Brush;
 
 pub fn main() -> iced::Result {
     PixelEditor::run(Settings {
@@ -16,11 +20,14 @@ pub fn main() -> iced::Result {
 struct PixelEditor {
     canvas: Cache,
     positions: Vec<Point>,
+    app_canvas: AppCanvas,
+    brush: Brush,
 }
 
 #[derive(Debug, Clone, Copy)]
 enum Message {
     Placed(Point),
+    Zoom(mouse::ScrollDelta),
 }
 
 impl Application for PixelEditor {
@@ -34,6 +41,15 @@ impl Application for PixelEditor {
             Self {
                 canvas: Cache::default(),
                 positions: Vec::new(),
+                app_canvas: AppCanvas {
+                    canvas_size: Size::new(16.0, 16.0),
+                    cell_size: Size::new(16.0, 16.0),
+                    zoom: 1.0,
+                },
+                brush: Brush {
+                    color: Color::BLACK,
+                    size: Size::new(1.0, 1.0),
+                },
             },
             Command::none(),
         )
@@ -49,6 +65,11 @@ impl Application for PixelEditor {
                 self.positions.push(point);
                 self.canvas.clear();
             }
+            Message::Zoom(zoom) => {
+                if let mouse::ScrollDelta::Lines { y, .. } = zoom {
+                    self.app_canvas.zoom += y * 0.1;
+                };
+            }
         }
 
         Command::none()
@@ -56,24 +77,16 @@ impl Application for PixelEditor {
 
     fn view(&self) -> Element<Message> {
         let canvas = canvas(self as &Self)
-            .width(Length::Fill)
-            .height(Length::Fill);
+            .width(Length::Fixed(self.app_canvas.width()))
+            .height(Length::Fixed(self.app_canvas.height()));
 
         container(canvas)
             .width(Length::Fill)
             .height(Length::Fill)
-            .padding(0)
+            .center_x()
+            .center_y()
             .into()
     }
-
-    // fn subscription(&self) -> Subscription<Message> {
-    //     iced::time::every(std::time::Duration::from_millis(500)).map(|_| {
-    //         Message::Tick(
-    //             time::OffsetDateTime::now_local()
-    //                 .unwrap_or_else(|_| time::OffsetDateTime::now_utc()),
-    //         )
-    //     })
-    // }
 }
 
 impl canvas::Program<Message> for PixelEditor {
@@ -83,7 +96,7 @@ impl canvas::Program<Message> for PixelEditor {
         &self,
         state: &mut Self::State,
         event: canvas::Event,
-        _bounds: Rectangle,
+        bounds: Rectangle,
         cursor: mouse::Cursor,
     ) -> (canvas::event::Status, Option<Message>) {
         match event {
@@ -91,9 +104,17 @@ impl canvas::Program<Message> for PixelEditor {
                 *state = cursor
                     .position()
                     .map(|point| {
-                        Point::new((point.x / 16.).floor() * 16., (point.y / 16.).floor() * 16.)
+                        Point::new(
+                            ((point.x - bounds.x) / self.app_canvas.cell_size().width).floor(),
+                            ((point.y - bounds.y) / self.app_canvas.cell_size().height).floor(),
+                        )
                     })
                     .map(Message::Placed);
+                (canvas::event::Status::Captured, state.take())
+            }
+            canvas::Event::Mouse(mouse::Event::WheelScrolled { delta }) => {
+                println!("{:?}", delta);
+                *state = Some(Message::Zoom(delta));
                 (canvas::event::Status::Captured, state.take())
             }
             _ => (canvas::event::Status::Ignored, state.take()),
@@ -109,14 +130,16 @@ impl canvas::Program<Message> for PixelEditor {
         _cursor: mouse::Cursor,
     ) -> Vec<Geometry> {
         let canvas = self.canvas.draw(renderer, bounds.size(), |frame| {
-            // Set the background color
             let background = Path::rectangle(Point::ORIGIN, frame.size());
-            frame.fill(&background, Color::from_rgb(0.1, 0.2, 0.3));
+            frame.fill(&background, Color::from_rgb(0.8, 0.8, 0.8));
 
-            // Draw all positions
-            for pos in &self.positions {
-                let cell = Path::rectangle(*pos, Size::new(16.0, 16.0));
-                frame.fill(&cell, Color::BLACK);
+            for position in &self.positions {
+                let pos = Point::new(
+                    position.x * self.app_canvas.cell_size().width,
+                    position.y * self.app_canvas.cell_size().height,
+                );
+                let cell = Path::rectangle(pos, self.app_canvas.cell_size());
+                frame.fill(&cell, self.brush.color);
             }
         });
 
