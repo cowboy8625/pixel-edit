@@ -80,7 +80,7 @@ pub fn main() !void {
         try ui.update(pos, &context);
         if (!context.flags.gui_active and
             rl.checkCollisionPointRec(worldMosusePosition, canvas.rect) and
-            rl.isMouseButtonDown(.mouse_button_middle))
+            rl.isMouseButtonDown(.mouse_button_right))
         {
             var delta = rl.getMouseDelta();
             delta = delta.scale(-1.0 / camera.zoom);
@@ -100,8 +100,8 @@ pub fn main() !void {
                 .Draw => if (rl.isMouseButtonDown(.mouse_button_left)) {
                     try canvas.insert(worldMosusePosition.divide(canvas.cell_size), context.brush.color);
                     context.last_cell_position = worldMosusePosition;
-                } else if (rl.isMouseButtonDown(.mouse_button_right)) {
-                    canvas.remove(worldMosusePosition.divide(canvas.cell_size));
+                    // } else if (rl.isMouseButtonDown(.mouse_button_right)) {
+                    //     canvas.remove(worldMosusePosition.divide(canvas.cell_size));
                 },
                 .Line => if (rl.isMouseButtonDown(.mouse_button_left)) {
                     context.last_cell_position = worldMosusePosition;

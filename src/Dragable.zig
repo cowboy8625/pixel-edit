@@ -22,7 +22,7 @@ pub fn Dragable(comptime T: type) type {
         pub fn update(self: *Self, pos: rl.Vector2) bool {
             if (rl.isMouseButtonPressed(self.button) and rl.checkCollisionPointRec(pos, self.rect)) {
                 self.grabbed_at = .{ .x = pos.x - self.rect.x, .y = pos.y - self.rect.y };
-            } else if (rl.isMouseButtonReleased(.mouse_button_middle)) {
+            } else if (rl.isMouseButtonReleased(self.button)) {
                 self.grabbed_at = null;
             }
 

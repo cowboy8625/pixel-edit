@@ -190,7 +190,7 @@ pub fn init(menu_rect: rl.Rectangle) Self {
         }.action),
         .color_picker = Dragable(*rl.Color).init(
             .{ .x = 200, .y = 10, .width = 200, .height = 200 },
-            .mouse_button_middle,
+            .mouse_button_right,
             struct {
                 fn callback(rect: rl.Rectangle, arg: *rl.Color) void {
                     _ = rg.guiColorPicker(rect, "Color Picker", arg);
