@@ -15,19 +15,21 @@ zig build run
 
 ### TODO
 - [ ] Add animations
-- [ ] Animations - display one frame at a time to a side by side of each other and make them editable
+- [ ] Animations - display each frame as the exported image would be displayed
 
 - [ ] World UI scaling with camera
 - [ ] TextInput add cursor movement with arrow keys
 - [ ] Ui implementation for buttons on a grid.
 
 #### File Manager
+- [ ] Draw Frame left and right button
+- [ ] Draw Eraser button
+- [ ] hook up a Eraser button
+- [ ] grab button move from middle to right click
 - [ ] Create Folder button
 - [ ] move left and right in text input with cursor
-- [ ] Load image mode
-- [ ] clicking on a file will put the name in the text input bar
-- [ ] clicking on a folder will open that folder and load its contents
-- [ ] Load images from files
+- [ ] Back button to move up a folder `../` at the top of the list
+- [ ] sort list to have folders at the top and files at the bottom
 
 - [ ] Filter only images
 
