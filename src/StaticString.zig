@@ -19,6 +19,14 @@ pub fn StaticString(comptime SIZE: comptime_int) type {
             };
         }
 
+        pub fn clear(self: *Self) void {
+            self.len = 0;
+        }
+
+        pub fn string(self: *Self) []const u8 {
+            return self.chars[0..self.len];
+        }
+
         pub fn push(self: *Self, char: u8) void {
             if (self.len < SIZE) {
                 self.chars[self.len] = char;
@@ -32,5 +40,26 @@ pub fn StaticString(comptime SIZE: comptime_int) type {
                 self.chars[self.len] = 0;
             }
         }
+        pub fn last(self: *Self) u8 {
+            return self.chars[self.len - 1];
+        }
+
+        pub fn iterator(self: *Self) Iterator {
+            return .{ .chars = self.chars[0..self.len], .len = self.len };
+        }
+
+        pub const Iterator = struct {
+            chars: []u8,
+            len: usize,
+            index: usize = 0,
+
+            pub fn next(self: *Iterator) ?u8 {
+                if (self.index < self.len) {
+                    defer self.index += 1;
+                    return self.chars[self.index];
+                }
+                return null;
+            }
+        };
     };
 }

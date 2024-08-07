@@ -4,6 +4,7 @@ const rg = @import("raygui");
 const utils = @import("utils.zig");
 const cast = utils.cast;
 
+const StaticString = @import("StaticString.zig").StaticString;
 const Button = @import("Button.zig").Button;
 const TextInput = @import("TextInput.zig");
 const Canvas = @import("Canvas.zig");
@@ -19,8 +20,7 @@ text_input: TextInput,
 rect: rl.Rectangle,
 close_with_picked_file: bool = false,
 is_open: bool = false,
-picked_file: [1024]u8 = [_]u8{ '.', '/' } ++ [_]u8{0} ** 1022,
-picked_file_length: usize = 2,
+path: StaticString(1024),
 
 pub fn init(action_name: []const u8, action: ActionCallback) Self {
     const rect: rl.Rectangle = .{
@@ -57,6 +57,9 @@ pub fn init(action_name: []const u8, action: ActionCallback) Self {
     cancel_button.setTextColor(rl.Color.black);
 
     const text_input = TextInput.init(rect.x + 10, rect.y + rect.height - 30, 200, 20);
+    var path = StaticString(1024).init();
+    path.push('.');
+    path.push('/');
 
     return .{
         .action_button = action_button,
@@ -64,6 +67,7 @@ pub fn init(action_name: []const u8, action: ActionCallback) Self {
         .action = action,
         .text_input = text_input,
         .rect = rect,
+        .path = path,
     };
 }
 
@@ -72,7 +76,7 @@ pub fn deinit(_: *Self) void {}
 pub fn update(self: *Self, mouse_pos: rl.Vector2, context: *Context) !bool {
     var active = false;
     if (!self.is_open) {
-        self.picked_file_length = 2;
+        self.path.len = 2;
         return active;
     }
     if (rl.checkCollisionPointRec(mouse_pos, self.rect)) {
@@ -89,7 +93,7 @@ pub fn update(self: *Self, mouse_pos: rl.Vector2, context: *Context) !bool {
 
 fn drawNames(self: *Self) !void {
     var cwd = std.fs.cwd();
-    var dir = try cwd.openDir(self.picked_file[0..self.picked_file_length], .{ .iterate = true });
+    var dir = try cwd.openDir(self.path.string(), .{ .iterate = true });
     defer dir.close();
 
     var iter = dir.iterate();
@@ -128,20 +132,18 @@ fn drawName(self: *Self, rect: *rl.Rectangle, i: usize, entry: std.fs.Dir.Entry)
     const text: [*:0]const u8 = @ptrCast(entry.name);
     rect.y = 100 + (20 * cast(f32, i) + 5);
     if (cast(bool, rg.guiLabelButton(rect.*, text)) and entry.kind == .directory) {
-        if (self.picked_file[self.picked_file_length - 1] != '/') {
-            self.picked_file[self.picked_file_length] = '/';
-            self.picked_file_length += 1;
+        if (self.path.last() != '/') {
+            self.path.push('/');
         }
         for (entry.name) |c| {
-            self.picked_file[self.picked_file_length] = c;
-            self.picked_file_length += 1;
+            self.path.push(c);
         }
     } else if (cast(bool, rg.guiLabelButton(rect.*, text)) and entry.kind == .file) {
-        if (self.picked_file[self.picked_file_length - 1] != '/') {
-            self.picked_file[self.picked_file_length] = '/';
-            self.picked_file_length += 1;
+        if (self.path.last() != '/') {
+            self.path.push('/');
         }
-        for (self.picked_file[0..self.picked_file_length]) |c| {
+        var iter = self.path.iterator();
+        while (iter.next()) |c| {
             self.text_input.text.push(c);
         }
         for (entry.name) |c| {
