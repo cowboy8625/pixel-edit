@@ -71,7 +71,10 @@ pub fn deinit(_: *Self) void {}
 
 pub fn update(self: *Self, mouse_pos: rl.Vector2, context: *Context) !bool {
     var active = false;
-    if (!self.is_open) return active;
+    if (!self.is_open) {
+        self.picked_file_length = 2;
+        return active;
+    }
     if (rl.checkCollisionPointRec(mouse_pos, self.rect)) {
         active = true;
     }
@@ -124,12 +127,25 @@ fn endsWithOneOf(name: []const u8, list: []const []const u8) bool {
 fn drawName(self: *Self, rect: *rl.Rectangle, i: usize, entry: std.fs.Dir.Entry) !void {
     const text: [*:0]const u8 = @ptrCast(entry.name);
     rect.y = 100 + (20 * cast(f32, i) + 5);
-    if (cast(bool, rg.guiLabelButton(rect.*, text))) {
-        self.picked_file[self.picked_file_length] = '/';
-        self.picked_file_length += 1;
+    if (cast(bool, rg.guiLabelButton(rect.*, text)) and entry.kind == .directory) {
+        if (self.picked_file[self.picked_file_length - 1] != '/') {
+            self.picked_file[self.picked_file_length] = '/';
+            self.picked_file_length += 1;
+        }
         for (entry.name) |c| {
             self.picked_file[self.picked_file_length] = c;
             self.picked_file_length += 1;
+        }
+    } else if (cast(bool, rg.guiLabelButton(rect.*, text)) and entry.kind == .file) {
+        if (self.picked_file[self.picked_file_length - 1] != '/') {
+            self.picked_file[self.picked_file_length] = '/';
+            self.picked_file_length += 1;
+        }
+        for (self.picked_file[0..self.picked_file_length]) |c| {
+            self.text_input.text.push(c);
+        }
+        for (entry.name) |c| {
+            self.text_input.text.push(c);
         }
     }
     const icon: rg.GuiIconName = if (entry.kind == .directory) .icon_folder else .icon_file;
