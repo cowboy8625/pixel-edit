@@ -14,24 +14,21 @@ zig build run
 ```
 
 ### TODO
-- [ ] Add animations
 - [ ] Animations - display each frame as the exported image would be displayed
 
+#### UI
 - [ ] World UI scaling with camera
-- [ ] TextInput add cursor movement with arrow keys
 - [ ] Ui implementation for buttons on a grid.
 
 #### File Manager
-- [ ] Draw Frame left and right button
-- [ ] Draw Eraser button
-- [ ] hook up a Eraser button
-- [ ] grab button move from middle to right click
-- [ ] Create Folder button
-- [ ] move left and right in text input with cursor
 - [ ] Back button to move up a folder `../` at the top of the list
 - [ ] sort list to have folders at the top and files at the bottom
+- [ ] Create Folder button
 
-- [ ] Filter only images
+#### Text Input
+- [ ] TextInput add cursor movement with arrow keys
+- [ ] move left and right in text input with cursor
+
 
 
 #### BUGS
