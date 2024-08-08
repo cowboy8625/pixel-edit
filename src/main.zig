@@ -166,9 +166,6 @@ pub fn main() !void {
         defer rl.endDrawing();
         rl.beginMode2D(camera);
 
-        if (canvas.frames.items.len > 1) {
-            rl.drawText(rl.textFormat("Frame: %d", .{canvas.frame_id}), 90, -20, 20, rl.Color.white);
-        }
         change_canvas_width.draw(canvas.size_in_pixels.x);
         change_canvas_height.draw(canvas.size_in_pixels.y);
         canvas.draw();
@@ -191,6 +188,15 @@ pub fn main() !void {
         rl.endMode2D();
         // -------    GUI     -------
 
+        if (canvas.frames.items.len > 1) {
+            rl.drawText(
+                rl.textFormat("Frame: %d", .{canvas.frame_id}),
+                screen_width - 100, // X
+                20, // Y
+                20,
+                rl.Color.white,
+            );
+        }
         try ui.draw(&context);
 
         // -------  END GUI   -------

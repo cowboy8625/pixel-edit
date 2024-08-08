@@ -37,6 +37,10 @@ pub fn update(self: *Self, mouse_pos: rl.Vector2) bool {
             self.has_focus = true;
         }
         active = true;
+    } else {
+        if (rl.isMouseButtonDown(.mouse_button_left)) {
+            self.has_focus = false;
+        }
     }
 
     const can_keypress = self.keypress_timer >= self.keypress_delay;
@@ -81,15 +85,17 @@ pub fn draw(self: *Self) void {
 
     const text_before_cursor: [*:0]const u8 = @ptrCast(self.text.chars[0 .. self.text.len + 1]);
     const text_width = rl.measureText(text_before_cursor, self.font_size);
-    rl.drawRectangleRounded(
-        .{
-            .x = self.rect.x + cast(f32, text_width) + 5,
-            .y = self.rect.y,
-            .width = 5,
-            .height = self.rect.height,
-        },
-        roundness,
-        segments,
-        self.cursor_color,
-    );
+    if (self.has_focus) {
+        rl.drawRectangleRounded(
+            .{
+                .x = self.rect.x + cast(f32, text_width) + 5,
+                .y = self.rect.y,
+                .width = 5,
+                .height = self.rect.height,
+            },
+            roundness,
+            segments,
+            self.cursor_color,
+        );
+    }
 }
