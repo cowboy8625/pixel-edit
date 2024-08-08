@@ -28,3 +28,9 @@ zig build run
 #### Text Input
 - [ ] TextInput add cursor movement with arrow keys
 - [ ] move left and right in text input with cursor
+
+#### TOOLS
+- [ ] Color Picker
+- [ ] Brush size
+- [ ] custom brushs
+- [ ] custom and saveable color palette  (save to a json file)

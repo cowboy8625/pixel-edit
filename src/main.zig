@@ -131,7 +131,7 @@ pub fn main() !void {
                     context.command = null;
                 },
                 .CloseColorPicker => {
-                    ui.openColorPicker();
+                    ui.closeColorPicker();
                     context.flags.color_picker_is_open = false;
                     context.command = null;
                 },

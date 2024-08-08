@@ -110,6 +110,15 @@ pub fn init(menu_rect: rl.Rectangle) Self {
     ));
 
     grid.push(Button(*Context).initWithTextureNoVec(
+        assets.loadTexture(assets.COLOR_WHEEL_ICON),
+        struct {
+            fn callback(ctx: *Context) void {
+                ctx.command = if (ctx.flags.color_picker_is_open) .CloseColorPicker else .OpenColorPicker;
+            }
+        }.callback,
+    ));
+
+    grid.push(Button(*Context).initWithTextureNoVec(
         assets.loadTexture(assets.COLOR_PICKER_ICON),
         struct {
             fn callback(ctx: *Context) void {
