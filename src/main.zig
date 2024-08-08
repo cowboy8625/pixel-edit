@@ -67,6 +67,7 @@ pub fn main() !void {
     rl.setTargetFPS(60);
     while (!rl.windowShouldClose()) {
         // -------   UPDATE   -------
+        const delta_time = rl.getFrameTime();
         const pos = rl.getMousePosition();
         const worldMosusePosition = rl.getScreenToWorld2D(pos, camera);
 
@@ -131,17 +132,15 @@ pub fn main() !void {
                         try canvas.newFrame();
                         canvas.nextFrame();
                     }
-                    std.debug.print("FrameRight: {}\n", .{canvas.frame_id});
                     context.command = null;
                 },
                 .FrameLeft => {
                     canvas.previousFrame();
-                    std.debug.print("FrameLeft: {}\n", .{canvas.frame_id});
                     context.command = null;
                 },
 
                 .Play => {
-                    std.debug.print("Play\n", .{});
+                    canvas.animate(delta_time);
                 },
                 .Stop => {
                     context.command = null;
@@ -167,6 +166,9 @@ pub fn main() !void {
         defer rl.endDrawing();
         rl.beginMode2D(camera);
 
+        if (canvas.frames.items.len > 1) {
+            rl.drawText(rl.textFormat("Frame: %d", .{canvas.frame_id}), 90, -20, 20, rl.Color.white);
+        }
         change_canvas_width.draw(canvas.size_in_pixels.x);
         change_canvas_height.draw(canvas.size_in_pixels.y);
         canvas.draw();

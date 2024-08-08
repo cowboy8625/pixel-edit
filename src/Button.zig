@@ -60,8 +60,8 @@ pub fn Button(comptime T: type) type {
             return Self.init(text, null, pos, DEFAULT_FONT_SIZE, callback);
         }
 
-        pub fn setHitBox(self: *Self, callback: (*const fn (rl.Rectangle) rl.Rectangle)) void {
-            self.hitbox = callback(self.hitbox);
+        pub fn setHitBox(self: *Self, func: (*const fn (rl.Rectangle) rl.Rectangle)) void {
+            self.hitbox = func(self.hitbox);
         }
 
         pub fn setTextColor(self: *Self, color: rl.Color) void {

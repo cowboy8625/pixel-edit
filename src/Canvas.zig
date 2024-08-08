@@ -20,6 +20,8 @@ cell_size: rl.Vector2,
 size_in_pixels: rl.Vector2,
 background_color: rl.Color = rl.Color.gray,
 frame_id: usize = 0,
+animation_accumulator: f32 = 0,
+animation_duration: f32 = 0.2,
 
 /// width and height are in pixels/cells
 pub fn init(alloc: Allocator, rect: rl.Rectangle, cell_size: rl.Vector2) !Self {
@@ -152,6 +154,14 @@ pub fn draw(self: *Self) void {
         };
         const color = entry.value_ptr.*;
         rl.drawRectangleV(pos.multiply(self.cell_size), self.cell_size, color);
+    }
+}
+
+pub fn animate(self: *Self, delta_time: f32) void {
+    self.animation_accumulator += delta_time;
+    if (self.animation_accumulator >= self.animation_duration) {
+        self.nextFrame();
+        self.animation_accumulator = 0;
     }
 }
 
