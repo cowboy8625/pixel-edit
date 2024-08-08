@@ -6,6 +6,14 @@ pub const Commands = enum {
     FrameLeft,
     Play,
     Stop,
+    OpenColorPicker,
+    CloseColorPicker,
+    OpenSaveFileManager,
+    OpenLoadFileManager,
+    CloseSaveFileManager,
+    CloseLoadFileManager,
+    TurnGridOn,
+    TurnGridOff,
 };
 
 const Self = @This();
@@ -14,8 +22,8 @@ const Flags = packed struct {
     draw_grid: bool = false,
     save_file_manager_is_open: bool = false,
     load_file_manager_is_open: bool = false,
-    gui_active: bool = false,
     color_picker_is_open: bool = false,
+    gui_active: bool = false,
 };
 
 flags: Flags = .{},

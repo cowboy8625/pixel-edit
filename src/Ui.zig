@@ -21,6 +21,7 @@ const UiGrid = Grid(*Context, WIDTH, HEIGHT);
 const Self = @This();
 
 is_menu_open: bool = false,
+color_picker_is_open: bool = false,
 menu_rect: rl.Rectangle,
 grid: UiGrid,
 open_menu_button: Button(*bool),
@@ -84,8 +85,8 @@ pub fn init(menu_rect: rl.Rectangle) Self {
     grid.push(Button(*Context).initWithTextureNoVec(
         assets.loadTexture(assets.LOAD_ICON),
         struct {
-            fn callback(arg: *Context) void {
-                arg.flags.load_file_manager_is_open = !arg.flags.load_file_manager_is_open;
+            fn callback(ctx: *Context) void {
+                ctx.command = if (ctx.flags.load_file_manager_is_open) .CloseLoadFileManager else .OpenLoadFileManager;
             }
         }.callback,
     ));
@@ -93,8 +94,8 @@ pub fn init(menu_rect: rl.Rectangle) Self {
     grid.push(Button(*Context).initWithTextureNoVec(
         assets.loadTexture(assets.SAVE_ICON),
         struct {
-            fn callback(arg: *Context) void {
-                arg.flags.save_file_manager_is_open = !arg.flags.save_file_manager_is_open;
+            fn callback(ctx: *Context) void {
+                ctx.command = if (ctx.flags.save_file_manager_is_open) .CloseSaveFileManager else .OpenSaveFileManager;
             }
         }.callback,
     ));
@@ -102,8 +103,8 @@ pub fn init(menu_rect: rl.Rectangle) Self {
     grid.push(Button(*Context).initWithTextureNoVec(
         assets.loadTexture(assets.GRID_ICON),
         struct {
-            fn callback(arg: *Context) void {
-                arg.flags.draw_grid = !arg.flags.draw_grid;
+            fn callback(ctx: *Context) void {
+                ctx.command = if (ctx.flags.draw_grid) .TurnGridOff else .TurnGridOn;
             }
         }.callback,
     ));
@@ -111,8 +112,8 @@ pub fn init(menu_rect: rl.Rectangle) Self {
     grid.push(Button(*Context).initWithTextureNoVec(
         assets.loadTexture(assets.COLOR_PICKER_ICON),
         struct {
-            fn callback(arg: *Context) void {
-                arg.flags.color_picker_is_open = !arg.flags.color_picker_is_open;
+            fn callback(ctx: *Context) void {
+                ctx.command = if (ctx.flags.color_picker_is_open) .CloseColorPicker else .OpenColorPicker;
             }
         }.callback,
     ));
@@ -242,6 +243,30 @@ pub fn deinit(self: *Self) void {
     self.save_file_manager.deinit();
 }
 
+pub fn openColorPicker(self: *Self) void {
+    self.color_picker_is_open = true;
+}
+
+pub fn closeColorPicker(self: *Self) void {
+    self.color_picker_is_open = false;
+}
+
+pub fn openSaveFileManager(self: *Self) void {
+    self.save_file_manager.is_open = true;
+}
+
+pub fn closeSaveFileManager(self: *Self) void {
+    self.save_file_manager.is_open = false;
+}
+
+pub fn openLoadFileManager(self: *Self) void {
+    self.load_file_manager.is_open = true;
+}
+
+pub fn closeLoadFileManager(self: *Self) void {
+    self.load_file_manager.is_open = false;
+}
+
 fn keyboardHandler(_: *Self, context: *Context) void {
     if (rl.isKeyDown(.key_left_shift)) {
         context.brush.mode = .Line;
@@ -258,17 +283,13 @@ pub fn update(self: *Self, mouse_pos: rl.Vector2, context: *Context) !void {
     _ = self.open_menu_button.update(mouse_pos, &self.is_menu_open);
     self.keyboardHandler(context);
 
-    self.save_file_manager.is_open = context.flags.save_file_manager_is_open;
     if (try self.save_file_manager.update(mouse_pos, context)) {
         context.flags.gui_active = true;
     }
-    context.flags.save_file_manager_is_open = self.save_file_manager.is_open;
 
-    self.load_file_manager.is_open = context.flags.load_file_manager_is_open;
     if (try self.load_file_manager.update(mouse_pos, context)) {
         context.flags.gui_active = true;
     }
-    context.flags.load_file_manager_is_open = self.load_file_manager.is_open;
 
     if (self.color_picker.update(mouse_pos)) {
         context.flags.gui_active = true;
@@ -281,7 +302,7 @@ pub fn draw(self: *Self, context: *Context) !void {
     try self.save_file_manager.draw();
     try self.load_file_manager.draw();
     self.open_menu_button.draw();
-    if (context.flags.color_picker_is_open) {
+    if (self.color_picker_is_open) {
         self.color_picker.draw(&context.brush.color);
     }
 }

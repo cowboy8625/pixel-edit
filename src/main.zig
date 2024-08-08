@@ -125,6 +125,44 @@ pub fn main() !void {
 
         if (context.command) |command| {
             switch (command) {
+                .OpenColorPicker => {
+                    ui.openColorPicker();
+                    context.flags.color_picker_is_open = true;
+                    context.command = null;
+                },
+                .CloseColorPicker => {
+                    ui.openColorPicker();
+                    context.flags.color_picker_is_open = false;
+                    context.command = null;
+                },
+                .OpenSaveFileManager => {
+                    ui.openSaveFileManager();
+                    context.flags.save_file_manager_is_open = true;
+                    context.command = null;
+                },
+                .CloseSaveFileManager => {
+                    ui.openSaveFileManager();
+                    context.flags.save_file_manager_is_open = false;
+                    context.command = null;
+                },
+                .OpenLoadFileManager => {
+                    ui.openLoadFileManager();
+                    context.flags.load_file_manager_is_open = true;
+                    context.command = null;
+                },
+                .CloseLoadFileManager => {
+                    ui.openLoadFileManager();
+                    context.flags.load_file_manager_is_open = false;
+                    context.command = null;
+                },
+                .TurnGridOn => {
+                    context.flags.draw_grid = true;
+                    context.command = null;
+                },
+                .TurnGridOff => {
+                    context.flags.draw_grid = false;
+                    context.command = null;
+                },
                 .FrameRight => {
                     if (canvas.frame_id < canvas.frames.items.len - 1) {
                         canvas.nextFrame();

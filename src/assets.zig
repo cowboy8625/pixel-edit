@@ -5,6 +5,7 @@ pub const GRID_ICON = @embedFile("assets/grid-icon.png");
 pub const MENU_ICON = @embedFile("assets/menu-icon.png");
 pub const SAVE_ICON = @embedFile("assets/save-icon.png");
 pub const COLOR_PICKER_ICON = @embedFile("assets/color-picker-icon.png");
+pub const COLOR_WHEEL_ICON = @embedFile("assets/color-wheel-icon.png");
 pub const LINE_TOOL_ICON = @embedFile("assets/line-icon.png");
 pub const BUCKET_TOOL_ICON = @embedFile("assets/bucket-icon.png");
 pub const PENCIL_TOOL_ICON = @embedFile("assets/pencil-icon.png");

@@ -28,9 +28,3 @@ zig build run
 #### Text Input
 - [ ] TextInput add cursor movement with arrow keys
 - [ ] move left and right in text input with cursor
-
-
-
-#### BUGS
-
-- All popups will just open when open tool menu
