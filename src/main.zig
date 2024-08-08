@@ -117,6 +117,12 @@ pub fn main() !void {
                     const y = cast(usize, @divFloor(worldMosusePosition.y, canvas.cell_size.y));
                     try algorithms.floodFill(allocator, &canvas, context.brush, .{ .x = x, .y = y });
                 },
+                .ColorPicker => if (rl.isMouseButtonPressed(.mouse_button_left)) {
+                    const x = cast(usize, @divFloor(worldMosusePosition.x, canvas.cell_size.x));
+                    const y = cast(usize, @divFloor(worldMosusePosition.y, canvas.cell_size.y));
+                    const color = canvas.get(Canvas.Point{ .x = x, .y = y }) orelse rl.Color.blank;
+                    context.brush.color = color;
+                },
             }
         } else {
             context.brush.hideOutline();

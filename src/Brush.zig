@@ -9,6 +9,7 @@ pub const Mode = enum {
     Line,
     Fill,
     Erase,
+    ColorPicker,
 };
 
 const Self = @This();

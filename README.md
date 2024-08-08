@@ -19,6 +19,7 @@ zig build run
 #### UI
 - [ ] World UI scaling with camera
 - [ ] Ui implementation for buttons on a grid.
+- [ ] some how highlight the selected tool in use
 
 #### File Manager
 - [ ] Back button to move up a folder `../` at the top of the list
