@@ -9,6 +9,10 @@ pub const LINE_TOOL_ICON = @embedFile("assets/line-icon.png");
 pub const BUCKET_TOOL_ICON = @embedFile("assets/bucket-icon.png");
 pub const PENCIL_TOOL_ICON = @embedFile("assets/pencil-icon.png");
 pub const LOAD_ICON = @embedFile("assets/load-icon.png");
+pub const ERASER_TOOL_ICON = @embedFile("assets/eraser-icon.png");
+pub const PLAY_ICON = @embedFile("assets/play-icon.png");
+pub const RIGHT_ARROW_ICON = @embedFile("assets/right-arrow-icon.png");
+pub const LEFT_ARROW_ICON = @embedFile("assets/left-arrow-icon.png");
 
 pub fn loadTexture(data: []const u8) rl.Texture2D {
     const image = rl.loadImageFromMemory(".png", data);

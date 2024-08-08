@@ -1,10 +1,11 @@
 const rl = @import("raylib");
 const Brush = @import("Brush.zig");
 
-pub const Mode = enum {
-    Draw,
-    Line,
-    Fill,
+pub const Commands = enum {
+    FrameRight,
+    FrameLeft,
+    Play,
+    Stop,
 };
 
 const Self = @This();
@@ -23,8 +24,8 @@ flags: Flags = .{},
 path: ?[]const u8 = null,
 path_action: enum { Save, Load } = .Save,
 last_cell_position: rl.Vector2 = .{ .x = 0, .y = 0 },
-mode: Mode = .Draw,
 brush: Brush,
+command: ?Commands = null,
 
 // METHODS
 pub fn init() Self {

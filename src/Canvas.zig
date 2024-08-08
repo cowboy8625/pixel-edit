@@ -5,7 +5,8 @@ const rg = @import("raygui");
 const utils = @import("utils.zig");
 const cast = utils.cast;
 
-const Pixels = std.AutoHashMap(Point, rl.Color);
+const Frame = std.AutoHashMap(Point, rl.Color);
+const Frames = std.ArrayList(Frame);
 pub const Point = struct {
     x: usize,
     y: usize,
@@ -13,20 +14,22 @@ pub const Point = struct {
 
 const Self = @This();
 alloc: Allocator,
-pixels: Pixels,
+frames: Frames,
 rect: rl.Rectangle,
 cell_size: rl.Vector2,
 size_in_pixels: rl.Vector2,
 background_color: rl.Color = rl.Color.gray,
+frame_id: usize = 0,
 
 /// width and height are in pixels/cells
 pub fn init(alloc: Allocator, rect: rl.Rectangle, cell_size: rl.Vector2) !Self {
-    var pixels = Pixels.init(alloc);
-    errdefer pixels.deinit();
+    var frames = Frames.init(alloc);
+    errdefer frames.deinit();
+    try frames.append(Frame.init(alloc));
 
     return .{
         .alloc = alloc,
-        .pixels = pixels,
+        .frames = frames,
         .rect = .{
             .x = rect.x,
             .y = rect.y,
@@ -42,7 +45,10 @@ pub fn init(alloc: Allocator, rect: rl.Rectangle, cell_size: rl.Vector2) !Self {
 }
 
 pub fn deinit(self: *Self) void {
-    self.pixels.deinit();
+    for (self.frames.items) |*frame| {
+        frame.deinit();
+    }
+    self.frames.deinit();
 }
 
 pub fn save(self: *Self, path: []const u8) void {
@@ -52,7 +58,8 @@ pub fn save(self: *Self, path: []const u8) void {
     defer rl.unloadTexture(target.texture);
 
     rl.beginTextureMode(target);
-    var iter = self.pixels.iterator();
+    const frame = self.getCurrentFrameConst();
+    var iter = frame.iterator();
     while (iter.next()) |kv| {
         const pos = kv.key_ptr.*;
         const color = kv.value_ptr.*;
@@ -82,23 +89,47 @@ pub fn load(self: *Self, path: []const u8) !void {
     }
 }
 
+pub fn newFrame(self: *Self) !void {
+    try self.frames.append(Frame.init(self.alloc));
+}
+
+pub fn nextFrame(self: *Self) void {
+    self.frame_id = (self.frame_id + 1) % self.frames.items.len;
+}
+
+pub fn previousFrame(self: *Self) void {
+    self.frame_id = if (self.frame_id == 0) self.frames.items.len - 1 else self.frame_id - 1;
+}
+
+pub fn getCurrentFramePtr(self: *Self) *Frame {
+    return &self.frames.items[self.frame_id];
+}
+
+pub fn getCurrentFrameConst(self: *const Self) *const Frame {
+    return &self.frames.items[self.frame_id];
+}
+
 pub fn clear(self: *Self) void {
-    self.pixels.clearRetainingCapacity();
+    var frame = self.getCurrentFramePtr();
+    frame.clearRetainingCapacity();
 }
 
 pub fn insert(self: *Self, pos: anytype, color: rl.Color) !void {
+    var frame = self.getCurrentFramePtr();
     const p = convertToPoint(pos);
-    try self.pixels.put(p, color);
+    try frame.put(p, color);
 }
 
 pub fn remove(self: *Self, pos: anytype) void {
+    var frame = self.getCurrentFramePtr();
     const p = convertToPoint(pos);
-    _ = self.pixels.remove(p);
+    _ = frame.remove(p);
 }
 
 pub fn get(self: *const Self, pos: anytype) ?rl.Color {
+    const frame = self.getCurrentFrameConst();
     const p = convertToPoint(pos);
-    return self.pixels.get(p);
+    return frame.get(p);
 }
 
 pub fn update(self: *Self) void {
@@ -111,8 +142,9 @@ pub fn update(self: *Self) void {
 }
 
 pub fn draw(self: *Self) void {
+    const frame = self.getCurrentFramePtr();
     rl.drawRectangleRec(self.rect, self.background_color);
-    var iter = self.pixels.iterator();
+    var iter = frame.iterator();
     while (iter.next()) |entry| {
         const pos: rl.Vector2 = .{
             .x = cast(f32, entry.key_ptr.*.x),

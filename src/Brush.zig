@@ -4,11 +4,19 @@ const utils = @import("utils.zig");
 const cast = utils.cast;
 const assets = @import("assets.zig");
 
+pub const Mode = enum {
+    Draw,
+    Line,
+    Fill,
+    Erase,
+};
+
 const Self = @This();
 
 color: rl.Color = rl.Color.ray_white,
 show_outline: bool = false,
 texture: rl.Texture2D,
+mode: Mode = .Draw,
 
 pub fn init() Self {
     return .{

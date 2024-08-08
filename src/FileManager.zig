@@ -144,10 +144,10 @@ fn drawName(self: *Self, rect: *rl.Rectangle, i: usize, entry: std.fs.Dir.Entry)
         }
         var iter = self.path.iterator();
         while (iter.next()) |c| {
-            self.text_input.text.push(c);
+            self.text_input.pushChar(c);
         }
         for (entry.name) |c| {
-            self.text_input.text.push(c);
+            self.text_input.pushChar(c);
         }
     }
     const icon: rg.GuiIconName = if (entry.kind == .directory) .icon_folder else .icon_file;

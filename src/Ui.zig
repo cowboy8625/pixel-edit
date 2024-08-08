@@ -121,7 +121,7 @@ pub fn init(menu_rect: rl.Rectangle) Self {
         assets.loadTexture(assets.LINE_TOOL_ICON),
         struct {
             fn callback(arg: *Context) void {
-                arg.mode = .Line;
+                arg.brush.mode = .Line;
             }
         }.callback,
     ));
@@ -130,7 +130,7 @@ pub fn init(menu_rect: rl.Rectangle) Self {
         assets.loadTexture(assets.BUCKET_TOOL_ICON),
         struct {
             fn callback(arg: *Context) void {
-                arg.mode = .Fill;
+                arg.brush.mode = .Fill;
             }
         }.callback,
     ));
@@ -139,7 +139,43 @@ pub fn init(menu_rect: rl.Rectangle) Self {
         assets.loadTexture(assets.PENCIL_TOOL_ICON),
         struct {
             fn callback(arg: *Context) void {
-                arg.mode = .Draw;
+                arg.brush.mode = .Draw;
+            }
+        }.callback,
+    ));
+
+    grid.push(Button(*Context).initWithTextureNoVec(
+        assets.loadTexture(assets.ERASER_TOOL_ICON),
+        struct {
+            fn callback(arg: *Context) void {
+                arg.brush.mode = .Erase;
+            }
+        }.callback,
+    ));
+
+    grid.push(Button(*Context).initWithTextureNoVec(
+        assets.loadTexture(assets.LEFT_ARROW_ICON),
+        struct {
+            fn callback(arg: *Context) void {
+                arg.command = .FrameLeft;
+            }
+        }.callback,
+    ));
+
+    grid.push(Button(*Context).initWithTextureNoVec(
+        assets.loadTexture(assets.PLAY_ICON),
+        struct {
+            fn callback(arg: *Context) void {
+                arg.command = if (arg.command == .Play) .Stop else .Play;
+            }
+        }.callback,
+    ));
+
+    grid.push(Button(*Context).initWithTextureNoVec(
+        assets.loadTexture(assets.RIGHT_ARROW_ICON),
+        struct {
+            fn callback(arg: *Context) void {
+                arg.command = .FrameRight;
             }
         }.callback,
     ));
@@ -208,9 +244,9 @@ pub fn deinit(self: *Self) void {
 
 fn keyboardHandler(_: *Self, context: *Context) void {
     if (rl.isKeyDown(.key_left_shift)) {
-        context.mode = .Line;
+        context.brush.mode = .Line;
     } else if (rl.isKeyReleased(.key_left_shift)) {
-        context.mode = .Draw;
+        context.brush.mode = .Draw;
     }
 }
 

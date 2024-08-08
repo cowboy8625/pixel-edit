@@ -57,6 +57,18 @@ pub fn update(self: *Self, mouse_pos: rl.Vector2) bool {
     return active;
 }
 
+pub fn pushChar(self: *Self, char: u8) void {
+    self.text.push(char);
+    self.cursor_position += 1;
+}
+
+pub fn setText(self: *Self, text: []u8, len: usize) void {
+    for (0..len) |i| {
+        self.text.push(text[i]);
+        self.cursor_position += 1;
+    }
+}
+
 pub fn draw(self: *Self) void {
     const roundness = 0.05;
     const segments = 10;

@@ -96,12 +96,13 @@ pub fn main() !void {
         if (!context.flags.gui_active and rl.checkCollisionPointRec(worldMosusePosition, canvas.rect)) {
             rl.hideCursor();
             context.brush.showOutline();
-            switch (context.mode) {
+            switch (context.brush.mode) {
                 .Draw => if (rl.isMouseButtonDown(.mouse_button_left)) {
                     try canvas.insert(worldMosusePosition.divide(canvas.cell_size), context.brush.color);
                     context.last_cell_position = worldMosusePosition;
-                    // } else if (rl.isMouseButtonDown(.mouse_button_right)) {
-                    //     canvas.remove(worldMosusePosition.divide(canvas.cell_size));
+                },
+                .Erase => if (rl.isMouseButtonDown(.mouse_button_left)) {
+                    canvas.remove(worldMosusePosition.divide(canvas.cell_size));
                 },
                 .Line => if (rl.isMouseButtonDown(.mouse_button_left)) {
                     context.last_cell_position = worldMosusePosition;
@@ -121,7 +122,34 @@ pub fn main() !void {
             rl.showCursor();
         }
 
-        if (context.mode == .Line and rl.checkCollisionPointRec(worldMosusePosition, canvas.rect)) {
+        if (context.command) |command| {
+            switch (command) {
+                .FrameRight => {
+                    if (canvas.frame_id < canvas.frames.items.len - 1) {
+                        canvas.nextFrame();
+                    } else {
+                        try canvas.newFrame();
+                        canvas.nextFrame();
+                    }
+                    std.debug.print("FrameRight: {}\n", .{canvas.frame_id});
+                    context.command = null;
+                },
+                .FrameLeft => {
+                    canvas.previousFrame();
+                    std.debug.print("FrameLeft: {}\n", .{canvas.frame_id});
+                    context.command = null;
+                },
+
+                .Play => {
+                    std.debug.print("Play\n", .{});
+                },
+                .Stop => {
+                    context.command = null;
+                },
+            }
+        }
+
+        if (context.brush.mode == .Line and rl.checkCollisionPointRec(worldMosusePosition, canvas.rect)) {
             canvas_overlay_pixels.clearRetainingCapacity();
             const x1 = cast(i32, @divFloor(context.last_cell_position.x, canvas.cell_size.x));
             const y1 = cast(i32, @divFloor(context.last_cell_position.y, canvas.cell_size.y));
@@ -142,7 +170,7 @@ pub fn main() !void {
         change_canvas_width.draw(canvas.size_in_pixels.x);
         change_canvas_height.draw(canvas.size_in_pixels.y);
         canvas.draw();
-        if (context.mode == .Line) {
+        if (context.brush.mode == .Line) {
             for (canvas_overlay_pixels.items) |p| {
                 const rect = .{
                     .x = p.x * canvas.cell_size.x,
