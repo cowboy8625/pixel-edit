@@ -14,6 +14,7 @@ pub const ERASER_TOOL_ICON = @embedFile("assets/eraser-icon.png");
 pub const PLAY_ICON = @embedFile("assets/play-icon.png");
 pub const RIGHT_ARROW_ICON = @embedFile("assets/right-arrow-icon.png");
 pub const LEFT_ARROW_ICON = @embedFile("assets/left-arrow-icon.png");
+pub const ROTATE_RIGHT_ICON = @embedFile("assets/rotate-right-icon.png");
 
 pub fn loadTexture(data: []const u8) rl.Texture2D {
     const image = rl.loadImageFromMemory(".png", data);

@@ -88,14 +88,21 @@ pub fn update(self: *Self, mouse_pos: rl.Vector2, context: *Context) !bool {
     self.action(self, context);
     return active;
 }
+fn pathKind(path: []const u8) std.fs.File.Kind {
+    const state = std.fs.cwd().statFile(path) catch |err| switch (err) {
+        error.FileNotFound => return .file,
+        else => unreachable,
+    };
+    return state.kind;
+}
 
 fn drawNames(self: *Self) !void {
     var cwd = std.fs.cwd();
     if (self.text_input.text.string().len == 0) {
         self.text_input.pushChar('.');
     }
-    const state = try std.fs.cwd().statFile(self.text_input.text.string());
-    const path = switch (state.kind) {
+    const kind = pathKind(self.text_input.text.string());
+    const path = switch (kind) {
         .file => blk: {
             // FIXME: This can fail if there isn't a '/' in the path
             const index = self.text_input.text.findIndexRev('/');
@@ -118,11 +125,11 @@ fn drawNames(self: *Self) !void {
     while (try iter.next()) |entry| {
         switch (entry.kind) {
             .file => if (endsWithOneOf(entry.name, &.{ ".png", ".jpg" })) {
-                try self.drawName(&rect, i, entry, state.kind);
+                try self.drawName(&rect, i, entry, kind);
                 i += 1;
             },
             .directory => {
-                try self.drawName(&rect, i, entry, state.kind);
+                try self.drawName(&rect, i, entry, kind);
                 i += 1;
             },
             else => {},

@@ -131,6 +131,14 @@ pub fn main() !void {
 
         if (context.command) |command| {
             switch (command) {
+                .RotateLeft => {
+                    canvas.rotateLeft();
+                    context.command = null;
+                },
+                .RotateRight => {
+                    canvas.rotateRight();
+                    context.command = null;
+                },
                 .OpenColorPicker => {
                     ui.openColorPicker();
                     context.flags.color_picker_is_open = true;

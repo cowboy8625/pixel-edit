@@ -107,6 +107,57 @@ pub fn getCurrentFramePtr(self: *Self) *Frame {
     return &self.frames.items[self.frame_id];
 }
 
+fn rotateIndexClockwise(x: usize, y: usize, w: usize, h: usize) Point {
+    const new_y = x;
+    const new_x = h - y - 1;
+    const index = new_y * h + new_x;
+    return .{
+        .x = @mod(index, w),
+        .y = index / h,
+    };
+}
+
+fn rotateIndexCounterClockwise(x: usize, y: usize, w: usize, h: usize) Point {
+    const new_x = y;
+    const new_y = h - x - 1;
+    const index = new_y * w + new_x;
+    return .{
+        .x = @mod(index, w),
+        .y = index / h,
+    };
+}
+
+pub fn rotateLeft(self: *Self) void {
+    var frame = self.getCurrentFramePtr();
+    var iter = frame.iterator();
+    while (iter.next()) |kv| {
+        const pos = kv.key_ptr.*;
+        const new_pos = rotateIndexCounterClockwise(
+            pos.x,
+            pos.y,
+            cast(usize, self.size_in_pixels.x),
+            cast(usize, self.size_in_pixels.y),
+        );
+        kv.key_ptr.* = new_pos;
+    }
+}
+
+pub fn rotateRight(self: *Self) void {
+    var frame = self.getCurrentFramePtr();
+    var iter = frame.iterator();
+    while (iter.next()) |kv| {
+        const pos = kv.key_ptr.*;
+        const new_pos = rotateIndexClockwise(
+            pos.x,
+            pos.y,
+            cast(usize, self.size_in_pixels.x),
+            cast(usize, self.size_in_pixels.y),
+        );
+        std.debug.print("pos: {}, new_pos: {}\n", .{ pos, new_pos });
+        kv.key_ptr.* = new_pos;
+    }
+}
+
 pub fn getCurrentFrameConst(self: *const Self) *const Frame {
     return &self.frames.items[self.frame_id];
 }

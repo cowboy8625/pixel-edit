@@ -14,6 +14,8 @@ pub const Commands = enum {
     CloseLoadFileManager,
     TurnGridOn,
     TurnGridOff,
+    RotateLeft,
+    RotateRight,
 };
 
 const Self = @This();

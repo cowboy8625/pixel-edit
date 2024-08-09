@@ -110,6 +110,24 @@ pub fn init(menu_rect: rl.Rectangle) Self {
     ));
 
     grid.push(Button(*Context).initWithTextureNoVec(
+        assets.loadTexture(assets.ROTATE_RIGHT_ICON),
+        struct {
+            fn callback(ctx: *Context) void {
+                ctx.command = .RotateLeft;
+            }
+        }.callback,
+    ));
+
+    grid.push(Button(*Context).initWithTextureNoVec(
+        assets.loadTexture(assets.ROTATE_RIGHT_ICON),
+        struct {
+            fn callback(ctx: *Context) void {
+                ctx.command = .RotateRight;
+            }
+        }.callback,
+    ));
+
+    grid.push(Button(*Context).initWithTextureNoVec(
         assets.loadTexture(assets.COLOR_WHEEL_ICON),
         struct {
             fn callback(ctx: *Context) void {
