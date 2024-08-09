@@ -40,6 +40,17 @@ pub fn StaticString(comptime SIZE: comptime_int) type {
                 self.chars[self.len] = 0;
             }
         }
+
+        pub fn findIndexRev(self: *Self, char: u8) ?usize {
+            var i: usize = self.len;
+            while (i > 0) : (i -= 1) {
+                if (self.chars[i - 1] == char) {
+                    return i - 1;
+                }
+            }
+            return null;
+        }
+
         pub fn last(self: *Self) u8 {
             return self.chars[self.len - 1];
         }

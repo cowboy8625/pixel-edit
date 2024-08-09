@@ -20,7 +20,6 @@ text_input: TextInput,
 rect: rl.Rectangle,
 close_with_picked_file: bool = false,
 is_open: bool = false,
-path: StaticString(1024),
 
 pub fn init(action_name: []const u8, action: ActionCallback) Self {
     const rect: rl.Rectangle = .{
@@ -67,7 +66,6 @@ pub fn init(action_name: []const u8, action: ActionCallback) Self {
         .action = action,
         .text_input = text_input,
         .rect = rect,
-        .path = path,
     };
 }
 
@@ -76,7 +74,7 @@ pub fn deinit(_: *Self) void {}
 pub fn update(self: *Self, mouse_pos: rl.Vector2, context: *Context) !bool {
     var active = false;
     if (!self.is_open) {
-        self.path.len = 2;
+        self.text_input.clear();
         return active;
     }
     if (rl.checkCollisionPointRec(mouse_pos, self.rect)) {
@@ -93,7 +91,20 @@ pub fn update(self: *Self, mouse_pos: rl.Vector2, context: *Context) !bool {
 
 fn drawNames(self: *Self) !void {
     var cwd = std.fs.cwd();
-    var dir = try cwd.openDir(self.path.string(), .{ .iterate = true });
+    if (self.text_input.text.string().len == 0) {
+        self.text_input.pushChar('.');
+    }
+    const state = try std.fs.cwd().statFile(self.text_input.text.string());
+    const path = switch (state.kind) {
+        .file => blk: {
+            // FIXME: This can fail if there isn't a '/' in the path
+            const index = self.text_input.text.findIndexRev('/');
+            break :blk self.text_input.text.string()[0..(index.? + 1)];
+        },
+        .directory => self.text_input.text.string(),
+        else => unreachable,
+    };
+    var dir = try cwd.openDir(path, .{ .iterate = true });
     defer dir.close();
 
     var iter = dir.iterate();
@@ -107,11 +118,11 @@ fn drawNames(self: *Self) !void {
     while (try iter.next()) |entry| {
         switch (entry.kind) {
             .file => if (endsWithOneOf(entry.name, &.{ ".png", ".jpg" })) {
-                try self.drawName(&rect, i, entry);
+                try self.drawName(&rect, i, entry, state.kind);
                 i += 1;
             },
             .directory => {
-                try self.drawName(&rect, i, entry);
+                try self.drawName(&rect, i, entry, state.kind);
                 i += 1;
             },
             else => {},
@@ -128,26 +139,30 @@ fn endsWithOneOf(name: []const u8, list: []const []const u8) bool {
     return false;
 }
 
-fn drawName(self: *Self, rect: *rl.Rectangle, i: usize, entry: std.fs.Dir.Entry) !void {
+fn drawName(self: *Self, rect: *rl.Rectangle, i: usize, entry: std.fs.Dir.Entry, current_state: std.fs.File.Kind) !void {
     const text: [*:0]const u8 = @ptrCast(entry.name);
     rect.y = 100 + (20 * cast(f32, i) + 5);
-    if (cast(bool, rg.guiLabelButton(rect.*, text)) and entry.kind == .directory) {
-        if (self.path.last() != '/') {
-            self.path.push('/');
-        }
-        for (entry.name) |c| {
-            self.path.push(c);
-        }
-    } else if (cast(bool, rg.guiLabelButton(rect.*, text)) and entry.kind == .file) {
-        if (self.path.last() != '/') {
-            self.path.push('/');
-        }
-        var iter = self.path.iterator();
-        while (iter.next()) |c| {
-            self.text_input.pushChar(c);
+    if (cast(bool, rg.guiLabelButton(rect.*, text)) and entry.kind == .directory and current_state == .directory) {
+        if (self.text_input.text.last() != '/') {
+            self.text_input.pushChar('/');
         }
         for (entry.name) |c| {
             self.text_input.pushChar(c);
+        }
+    } else if (cast(bool, rg.guiLabelButton(rect.*, text)) and entry.kind == .file and current_state == .directory) {
+        if (self.text_input.text.last() != '/') {
+            self.text_input.pushChar('/');
+        }
+        for (entry.name) |c| {
+            self.text_input.pushChar(c);
+        }
+    } else if (cast(bool, rg.guiLabelButton(rect.*, text)) and entry.kind == .file and current_state == .file) {
+        const index = self.text_input.text.findIndexRev('/');
+        if (index) |idx| {
+            self.text_input.chopAt(idx + 1);
+            for (entry.name) |c| {
+                self.text_input.pushChar(c);
+            }
         }
     }
     const icon: rg.GuiIconName = if (entry.kind == .directory) .icon_folder else .icon_file;

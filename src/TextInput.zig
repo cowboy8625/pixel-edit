@@ -66,11 +66,22 @@ pub fn pushChar(self: *Self, char: u8) void {
     self.cursor_position += 1;
 }
 
-pub fn setText(self: *Self, text: []u8, len: usize) void {
+pub fn clear(self: *Self) void {
+    self.text.clear();
+    self.cursor_position = 0;
+}
+
+pub fn setText(self: *Self, text: []const u8, len: usize) void {
+    self.text.clear();
     for (0..len) |i| {
         self.text.push(text[i]);
         self.cursor_position += 1;
     }
+}
+
+pub fn chopAt(self: *Self, index: usize) void {
+    self.text.len = index;
+    self.cursor_position = @min(index, self.cursor_position);
 }
 
 pub fn draw(self: *Self) void {
