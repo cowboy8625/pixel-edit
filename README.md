@@ -25,6 +25,7 @@ zig build run
 - [ ] Back button to move up a folder `../` at the top of the list
 - [ ] sort list to have folders at the top and files at the bottom
 - [ ] Create Folder button
+- [ ] If file name is to long chop it and add ...
 
 #### Text Input
 - [ ] TextInput add cursor movement with arrow keys
