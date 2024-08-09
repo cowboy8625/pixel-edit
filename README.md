@@ -32,7 +32,9 @@ zig build run
 - [ ] move left and right in text input with cursor
 
 #### TOOLS
-- [ ] Color Picker
 - [ ] Brush size
 - [ ] custom brushs
 - [ ] custom and saveable color palette  (save to a json file)
+
+#### WIDNOWS
+file manager doesnt work
