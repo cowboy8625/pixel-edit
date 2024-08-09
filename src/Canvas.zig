@@ -127,6 +127,28 @@ fn rotateIndexCounterClockwise(x: usize, y: usize, w: usize, h: usize) Point {
     };
 }
 
+fn flipPointHorizontal(x: usize, y: usize, w: usize, h: usize) Point {
+    const new_x = w - x - 1;
+    const new_y = y;
+    const index = new_y * w + new_x;
+
+    return .{
+        .x = @mod(index, w),
+        .y = index / h,
+    };
+}
+
+fn flipPointVertical(x: usize, y: usize, w: usize, h: usize) Point {
+    const new_x = x;
+    const new_y = h - y - 1;
+    const index = new_y * w + new_x;
+
+    return .{
+        .x = @mod(index, w),
+        .y = index / h,
+    };
+}
+
 pub fn rotateLeft(self: *Self) void {
     var frame = self.getCurrentFramePtr();
     var iter = frame.iterator();
@@ -154,6 +176,36 @@ pub fn rotateRight(self: *Self) void {
             cast(usize, self.size_in_pixels.y),
         );
         std.debug.print("pos: {}, new_pos: {}\n", .{ pos, new_pos });
+        kv.key_ptr.* = new_pos;
+    }
+}
+
+pub fn flipHorizontal(self: *Self) void {
+    var frame = self.getCurrentFramePtr();
+    var iter = frame.iterator();
+    while (iter.next()) |kv| {
+        const pos = kv.key_ptr.*;
+        const new_pos = flipPointHorizontal(
+            pos.x,
+            pos.y,
+            cast(usize, self.size_in_pixels.x),
+            cast(usize, self.size_in_pixels.y),
+        );
+        kv.key_ptr.* = new_pos;
+    }
+}
+
+pub fn flipVertical(self: *Self) void {
+    var frame = self.getCurrentFramePtr();
+    var iter = frame.iterator();
+    while (iter.next()) |kv| {
+        const pos = kv.key_ptr.*;
+        const new_pos = flipPointVertical(
+            pos.x,
+            pos.y,
+            cast(usize, self.size_in_pixels.x),
+            cast(usize, self.size_in_pixels.y),
+        );
         kv.key_ptr.* = new_pos;
     }
 }

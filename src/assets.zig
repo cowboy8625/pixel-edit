@@ -15,6 +15,9 @@ pub const PLAY_ICON = @embedFile("assets/play-icon.png");
 pub const RIGHT_ARROW_ICON = @embedFile("assets/right-arrow-icon.png");
 pub const LEFT_ARROW_ICON = @embedFile("assets/left-arrow-icon.png");
 pub const ROTATE_RIGHT_ICON = @embedFile("assets/rotate-right-icon.png");
+pub const ROTATE_LEFT_ICON = @embedFile("assets/rotate-left-icon.png");
+pub const FLIP_VERTICAL_ICON = @embedFile("assets/flip-vertical-icon.png");
+pub const FLIP_HORIZONTAL_ICON = @embedFile("assets/flip-horizontal-icon.png");
 
 pub fn loadTexture(data: []const u8) rl.Texture2D {
     const image = rl.loadImageFromMemory(".png", data);

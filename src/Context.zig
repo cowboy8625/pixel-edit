@@ -16,6 +16,8 @@ pub const Commands = enum {
     TurnGridOff,
     RotateLeft,
     RotateRight,
+    FlipHorizontal,
+    FlipVertical,
 };
 
 const Self = @This();

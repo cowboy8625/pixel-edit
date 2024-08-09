@@ -131,6 +131,14 @@ pub fn main() !void {
 
         if (context.command) |command| {
             switch (command) {
+                .FlipHorizontal => {
+                    canvas.flipHorizontal();
+                    context.command = null;
+                },
+                .FlipVertical => {
+                    canvas.flipVertical();
+                    context.command = null;
+                },
                 .RotateLeft => {
                     canvas.rotateLeft();
                     context.command = null;
