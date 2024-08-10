@@ -2,6 +2,8 @@ const rl = @import("raylib");
 const Brush = @import("Brush.zig");
 
 pub const Commands = enum {
+    OpenMenu,
+    CloseMenu,
     FrameRight,
     FrameLeft,
     Play,
@@ -27,6 +29,7 @@ const Flags = packed struct {
     save_file_manager_is_open: bool = false,
     load_file_manager_is_open: bool = false,
     color_picker_is_open: bool = false,
+    menu_is_open: bool = false,
     gui_active: bool = false,
 };
 

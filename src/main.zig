@@ -131,6 +131,16 @@ pub fn main() !void {
 
         if (context.command) |command| {
             switch (command) {
+                .OpenMenu => {
+                    ui.openMenu();
+                    context.flags.menu_is_open = true;
+                    context.command = null;
+                },
+                .CloseMenu => {
+                    ui.closeMenu();
+                    context.flags.menu_is_open = false;
+                    context.command = null;
+                },
                 .FlipHorizontal => {
                     canvas.flipHorizontal();
                     context.command = null;
@@ -200,6 +210,7 @@ pub fn main() !void {
                 },
 
                 .Play => {
+                    // TODO: implement flag for this
                     canvas.animate(delta_time);
                 },
                 .Stop => {

@@ -24,7 +24,7 @@ is_menu_open: bool = false,
 color_picker_is_open: bool = false,
 menu_rect: rl.Rectangle,
 grid: UiGrid,
-open_menu_button: Button(*bool),
+open_menu_button: Button(*Context),
 save_file_manager: FileManager,
 load_file_manager: FileManager,
 color_picker: Dragable(*rl.Color),
@@ -128,78 +128,6 @@ pub fn init(menu_rect: rl.Rectangle) Self {
     ));
 
     grid.push(Button(*Context).initWithTextureNoVec(
-        assets.loadTexture(assets.FLIP_HORIZONTAL_ICON),
-        struct {
-            fn callback(ctx: *Context) void {
-                ctx.command = .FlipHorizontal;
-            }
-        }.callback,
-    ));
-
-    grid.push(Button(*Context).initWithTextureNoVec(
-        assets.loadTexture(assets.FLIP_VERTICAL_ICON),
-        struct {
-            fn callback(ctx: *Context) void {
-                ctx.command = .FlipVertical;
-            }
-        }.callback,
-    ));
-
-    grid.push(Button(*Context).initWithTextureNoVec(
-        assets.loadTexture(assets.COLOR_WHEEL_ICON),
-        struct {
-            fn callback(ctx: *Context) void {
-                ctx.command = if (ctx.flags.color_picker_is_open) .CloseColorPicker else .OpenColorPicker;
-            }
-        }.callback,
-    ));
-
-    grid.push(Button(*Context).initWithTextureNoVec(
-        assets.loadTexture(assets.COLOR_PICKER_ICON),
-        struct {
-            fn callback(ctx: *Context) void {
-                ctx.brush.mode = .ColorPicker;
-            }
-        }.callback,
-    ));
-
-    grid.push(Button(*Context).initWithTextureNoVec(
-        assets.loadTexture(assets.LINE_TOOL_ICON),
-        struct {
-            fn callback(arg: *Context) void {
-                arg.brush.mode = .Line;
-            }
-        }.callback,
-    ));
-
-    grid.push(Button(*Context).initWithTextureNoVec(
-        assets.loadTexture(assets.BUCKET_TOOL_ICON),
-        struct {
-            fn callback(arg: *Context) void {
-                arg.brush.mode = .Fill;
-            }
-        }.callback,
-    ));
-
-    grid.push(Button(*Context).initWithTextureNoVec(
-        assets.loadTexture(assets.PENCIL_TOOL_ICON),
-        struct {
-            fn callback(arg: *Context) void {
-                arg.brush.mode = .Draw;
-            }
-        }.callback,
-    ));
-
-    grid.push(Button(*Context).initWithTextureNoVec(
-        assets.loadTexture(assets.ERASER_TOOL_ICON),
-        struct {
-            fn callback(arg: *Context) void {
-                arg.brush.mode = .Erase;
-            }
-        }.callback,
-    ));
-
-    grid.push(Button(*Context).initWithTextureNoVec(
         assets.loadTexture(assets.LEFT_ARROW_ICON),
         struct {
             fn callback(arg: *Context) void {
@@ -226,26 +154,88 @@ pub fn init(menu_rect: rl.Rectangle) Self {
         }.callback,
     ));
 
-    var open_menu_button = Button(*bool).initWithTexture(
+    grid.push(Button(*Context).initWithTextureNoVec(
+        assets.loadTexture(assets.FLIP_HORIZONTAL_ICON),
+        struct {
+            fn callback(ctx: *Context) void {
+                ctx.command = .FlipHorizontal;
+            }
+        }.callback,
+    ));
+
+    grid.push(Button(*Context).initWithTextureNoVec(
+        assets.loadTexture(assets.FLIP_VERTICAL_ICON),
+        struct {
+            fn callback(ctx: *Context) void {
+                ctx.command = .FlipVertical;
+            }
+        }.callback,
+    ));
+
+    grid.push(Button(*Context).initWithTextureNoVec(
+        assets.loadTexture(assets.PENCIL_TOOL_ICON),
+        struct {
+            fn callback(arg: *Context) void {
+                arg.brush.mode = .Draw;
+            }
+        }.callback,
+    ));
+
+    grid.push(Button(*Context).initWithTextureNoVec(
+        assets.loadTexture(assets.BUCKET_TOOL_ICON),
+        struct {
+            fn callback(arg: *Context) void {
+                arg.brush.mode = .Fill;
+            }
+        }.callback,
+    ));
+
+    grid.push(Button(*Context).initWithTextureNoVec(
+        assets.loadTexture(assets.LINE_TOOL_ICON),
+        struct {
+            fn callback(arg: *Context) void {
+                arg.brush.mode = .Line;
+            }
+        }.callback,
+    ));
+
+    grid.push(Button(*Context).initWithTextureNoVec(
+        assets.loadTexture(assets.COLOR_WHEEL_ICON),
+        struct {
+            fn callback(ctx: *Context) void {
+                ctx.command = if (ctx.flags.color_picker_is_open) .CloseColorPicker else .OpenColorPicker;
+            }
+        }.callback,
+    ));
+
+    grid.push(Button(*Context).initWithTextureNoVec(
+        assets.loadTexture(assets.COLOR_PICKER_ICON),
+        struct {
+            fn callback(ctx: *Context) void {
+                ctx.brush.mode = .ColorPicker;
+            }
+        }.callback,
+    ));
+
+    grid.push(Button(*Context).initWithTextureNoVec(
+        assets.loadTexture(assets.ERASER_TOOL_ICON),
+        struct {
+            fn callback(arg: *Context) void {
+                arg.brush.mode = .Erase;
+            }
+        }.callback,
+    ));
+
+    var open_menu_button = Button(*Context).initWithTexture(
         assets.loadTexture(assets.MENU_ICON),
         .{ .x = 2, .y = 2 },
         struct {
-            fn callback(arg: *bool) void {
-                arg.* = !arg.*;
+            fn callback(ctx: *Context) void {
+                ctx.command = if (ctx.flags.menu_is_open) .CloseMenu else .OpenMenu;
             }
         }.callback,
     );
 
-    open_menu_button.setHitBox(struct {
-        fn callback(rect: rl.Rectangle) rl.Rectangle {
-            return .{
-                .x = rect.x + 10,
-                .y = rect.y + 10,
-                .width = @divFloor(rect.width, 10),
-                .height = @divFloor(rect.height, 10),
-            };
-        }
-    }.callback);
     errdefer open_menu_button.deinit();
 
     return .{
@@ -288,6 +278,14 @@ pub fn deinit(self: *Self) void {
     self.save_file_manager.deinit();
 }
 
+pub fn openMenu(self: *Self) void {
+    self.is_menu_open = true;
+}
+
+pub fn closeMenu(self: *Self) void {
+    self.is_menu_open = false;
+}
+
 pub fn openColorPicker(self: *Self) void {
     self.color_picker_is_open = true;
 }
@@ -325,7 +323,7 @@ pub fn update(self: *Self, mouse_pos: rl.Vector2, context: *Context) !void {
         context.flags.gui_active = true;
     }
     try self.grid.update(mouse_pos, context);
-    _ = self.open_menu_button.update(mouse_pos, &self.is_menu_open);
+    _ = self.open_menu_button.update(mouse_pos, context);
     self.keyboardHandler(context);
 
     if (try self.save_file_manager.update(mouse_pos, context)) {
@@ -361,9 +359,4 @@ pub fn drawMenu(self: *Self, _: *Context) !void {
         .y = self.open_menu_button.pos.y + self.open_menu_button.hitbox.height + 20,
     };
     try self.grid.draw(pos);
-    // self.toggle_grid.draw();
-    // self.file_manager_open_button.draw();
-    // self.toggle_file_picker.draw();
-    // self.line_tool_button.draw();
-    // self.bucket_tool_button.draw();
 }

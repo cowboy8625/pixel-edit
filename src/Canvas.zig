@@ -175,7 +175,6 @@ pub fn rotateRight(self: *Self) void {
             cast(usize, self.size_in_pixels.x),
             cast(usize, self.size_in_pixels.y),
         );
-        std.debug.print("pos: {}, new_pos: {}\n", .{ pos, new_pos });
         kv.key_ptr.* = new_pos;
     }
 }
