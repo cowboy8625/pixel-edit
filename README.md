@@ -1,10 +1,9 @@
 # Pixel Edit
 
-<img src="https://github.com/cowboy8625/pixel-edit/assets/43012445/46d1269f-25b9-4e95-be15-dd472f30a95f"/>
+<img src="https://github.com/user-attachments/assets/659f4d49-a4ec-4d6d-bac0-e9a76f2a73d0"/>
 
 ### Building
 
-- dependencies: [raylib](https://github.com/raysan5/raylib)
 - built with version `0.13.0`
 
 ```shell
