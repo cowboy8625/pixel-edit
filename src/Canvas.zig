@@ -68,18 +68,20 @@ pub fn copyAeraToNewFrame(self: *Self, rect: rl.Rectangle) !void {
 }
 
 pub fn save(self: *Self, path: []const u8) void {
-    const width = self.size_in_pixels.x;
+    const width = self.size_in_pixels.x * cast(f32, self.frames.items.len);
     const height = self.size_in_pixels.y;
     const target = rl.loadRenderTexture(cast(i32, width), cast(i32, height));
     defer rl.unloadTexture(target.texture);
 
     rl.beginTextureMode(target);
-    const frame = self.getCurrentFrameConst();
-    var iter = frame.iterator();
-    while (iter.next()) |kv| {
-        const pos = kv.key_ptr.*;
-        const color = kv.value_ptr.*;
-        rl.drawPixel(cast(i32, pos.x), cast(i32, pos.y), color);
+    for (0.., self.frames.items) |idx, frame| {
+        const x_offset = idx * cast(usize, self.size_in_pixels.x);
+        var iter = frame.iterator();
+        while (iter.next()) |kv| {
+            const pos = kv.key_ptr.*;
+            const color = kv.value_ptr.*;
+            rl.drawPixel(cast(i32, pos.x + x_offset), cast(i32, pos.y), color);
+        }
     }
     rl.endTextureMode();
     var image = rl.loadImageFromTexture(target.texture);
