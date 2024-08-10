@@ -99,12 +99,20 @@ pub fn nextFrame(self: *Self) void {
     self.frame_id = (self.frame_id + 1) % self.frames.items.len;
 }
 
+/// sets frame_id to the previous frame
 pub fn previousFrame(self: *Self) void {
     self.frame_id = if (self.frame_id == 0) self.frames.items.len - 1 else self.frame_id - 1;
 }
 
 pub fn getCurrentFramePtr(self: *Self) *Frame {
     return &self.frames.items[self.frame_id];
+}
+
+/// Returns the previous frame
+pub fn getPrevousFramePtr(self: *Self) *Frame {
+    const id = if (self.frame_id == 0) self.frames.items.len - 1 else self.frame_id - 1;
+    const last_frame_id = @mod(id, self.frames.items.len);
+    return &self.frames.items[last_frame_id];
 }
 
 fn rotateIndexClockwise(x: usize, y: usize, w: usize, h: usize) Point {
@@ -245,9 +253,28 @@ pub fn update(self: *Self) void {
     };
 }
 
-pub fn draw(self: *Self) void {
+pub fn drawLastFrame(self: *Self, opacity: u8) void {
+    const frame = self.getPrevousFramePtr();
+    var iter = frame.iterator();
+    while (iter.next()) |entry| {
+        const pos: rl.Vector2 = .{
+            .x = cast(f32, entry.key_ptr.*.x),
+            .y = cast(f32, entry.key_ptr.*.y),
+        };
+        const color = if (opacity < 255) rl.Color{
+            .r = entry.value_ptr.*.r,
+            .g = entry.value_ptr.*.g,
+            .b = entry.value_ptr.*.b,
+            .a = opacity,
+        } else entry.value_ptr.*;
+        rl.drawRectangleV(pos.multiply(self.cell_size), self.cell_size, color);
+    }
+}
+
+pub fn draw(self: *Self, opacity: u8) void {
     const frame = self.getCurrentFramePtr();
     rl.drawRectangleRec(self.rect, self.background_color);
+    if (opacity < 255) self.drawLastFrame(opacity);
     var iter = frame.iterator();
     while (iter.next()) |entry| {
         const pos: rl.Vector2 = .{

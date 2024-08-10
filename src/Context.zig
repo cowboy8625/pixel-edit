@@ -36,6 +36,7 @@ const Flags = packed struct {
 flags: Flags = .{},
 
 // DATA
+frame_opacity: u8 = 255,
 path: ?[]const u8 = null,
 path_action: enum { Save, Load } = .Save,
 last_cell_position: rl.Vector2 = .{ .x = 0, .y = 0 },

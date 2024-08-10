@@ -10,6 +10,7 @@ const Context = @import("Context.zig");
 const handleCliArgs = @import("args.zig").handleCliArgs;
 const algorithms = @import("algorithms.zig");
 const Button = @import("Button.zig").Button;
+const Slider = @import("Slider.zig").Slider;
 
 test {
     _ = @import("Canvas.zig");
@@ -56,6 +57,20 @@ pub fn main() !void {
 
     var ui = Ui.init(.{ .x = 0, .y = 0, .width = 110, .height = screen_height });
     defer ui.deinit();
+    var frame_opacity_slider = Slider(u8, *Context).init(
+        context.frame_opacity,
+        0,
+        255,
+        .{
+            .x = 256,
+            .y = 20,
+        },
+        struct {
+            fn callback(value: u8, ctx: *Context) void {
+                ctx.frame_opacity = value;
+            }
+        }.callback,
+    );
 
     // -----  In World Space  ----
     var change_canvas_width = IncCanvasWidth.init();
@@ -230,6 +245,8 @@ pub fn main() !void {
             canvas_overlay_pixels.clearRetainingCapacity();
         }
 
+        _ = frame_opacity_slider.update(pos, &context);
+
         // ------- END UPDATE -------
         // -------    DRAW    -------
         rl.beginDrawing();
@@ -239,7 +256,7 @@ pub fn main() !void {
 
         change_canvas_width.draw(canvas.size_in_pixels.x);
         change_canvas_height.draw(canvas.size_in_pixels.y);
-        canvas.draw();
+        canvas.draw(context.frame_opacity);
         if (context.brush.mode == .Line) {
             for (canvas_overlay_pixels.items) |p| {
                 const rect = .{
@@ -263,6 +280,19 @@ pub fn main() !void {
             rl.drawText(
                 rl.textFormat("Frame: %d", .{canvas.frame_id}),
                 screen_width - 100, // X
+                20, // Y
+                20,
+                rl.Color.white,
+            );
+
+            frame_opacity_slider.draw(.{
+                .x = screen_width - 500,
+                .y = 20,
+            });
+
+            rl.drawText(
+                rl.textFormat("%d", .{context.frame_opacity}),
+                screen_width - 500 + 260,
                 20, // Y
                 20,
                 rl.Color.white,
