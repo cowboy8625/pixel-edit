@@ -18,6 +18,8 @@ pub const ROTATE_RIGHT_ICON = @embedFile("assets/rotate-right-icon.png");
 pub const ROTATE_LEFT_ICON = @embedFile("assets/rotate-left-icon.png");
 pub const FLIP_VERTICAL_ICON = @embedFile("assets/flip-vertical-icon.png");
 pub const FLIP_HORIZONTAL_ICON = @embedFile("assets/flip-horizontal-icon.png");
+pub const FRAMES_ICON = @embedFile("assets/frames-icon.png");
+pub const SELECTION_ICON = @embedFile("assets/selection-icon.png");
 
 pub fn loadTexture(data: []const u8) rl.Texture2D {
     const image = rl.loadImageFromMemory(".png", data);

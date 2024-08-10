@@ -96,6 +96,7 @@ fn pathKind(path: []const u8) std.fs.File.Kind {
     return state.kind;
 }
 
+// FIXME: This fails on windows.
 fn drawNames(self: *Self) !void {
     var cwd = std.fs.cwd();
     if (self.text_input.text.string().len == 0) {

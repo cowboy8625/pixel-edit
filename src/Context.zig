@@ -20,6 +20,7 @@ pub const Commands = enum {
     RotateRight,
     FlipHorizontal,
     FlipVertical,
+    IntoFrames,
 };
 
 const Self = @This();

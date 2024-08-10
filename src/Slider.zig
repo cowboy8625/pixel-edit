@@ -6,7 +6,7 @@ const cast = utils.cast;
 const Context = @import("Context.zig");
 
 pub fn Slider(comptime V: type, comptime T: type) type {
-    const Callback = (*const fn (V, T) void);
+    const Callback = (*const fn (V, T) V);
     return struct {
         const Self = @This();
 
@@ -37,9 +37,9 @@ pub fn Slider(comptime V: type, comptime T: type) type {
             var active = false;
             if (rl.checkCollisionPointRec(mouse_pos, self.rect)) {
                 if (rl.isMouseButtonDown(.mouse_button_left)) {
-                    const value = cast(V, cast(f32, rl.getMouseX()) - self.rect.x);
-                    self.value = @min(self.max, @max(value, self.min));
-                    self.callback(self.value, data);
+                    var value = cast(V, cast(f32, rl.getMouseX()) - self.rect.x);
+                    value = @min(self.max, @max(value, self.min));
+                    self.value = self.callback(self.value, data);
                 }
                 active = true;
             }

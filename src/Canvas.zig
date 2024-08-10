@@ -53,6 +53,20 @@ pub fn deinit(self: *Self) void {
     self.frames.deinit();
 }
 
+pub fn copyAeraToNewFrame(self: *Self, rect: rl.Rectangle) !void {
+    const frame = self.getCurrentFramePtr();
+    var new_frame = Frame.init(self.alloc);
+    const offset_x = cast(usize, rect.x);
+    const offset_y = cast(usize, rect.y);
+    for (cast(usize, rect.y)..cast(usize, rect.y + rect.height)) |y| {
+        for (cast(usize, rect.x)..cast(usize, rect.x + rect.width)) |x| {
+            const value = frame.get(Point{ .x = x, .y = y }) orelse continue;
+            try new_frame.put(Point{ .x = x - offset_x, .y = y - offset_y }, value);
+        }
+    }
+    try self.frames.append(new_frame);
+}
+
 pub fn save(self: *Self, path: []const u8) void {
     const width = self.size_in_pixels.x;
     const height = self.size_in_pixels.y;
@@ -93,6 +107,12 @@ pub fn load(self: *Self, path: []const u8) !void {
 
 pub fn newFrame(self: *Self) !void {
     try self.frames.append(Frame.init(self.alloc));
+}
+
+pub fn deleteFrame(self: *Self, id: usize) void {
+    var old_frame = self.frames.orderedRemove(id);
+    old_frame.deinit();
+    self.frame_id = if (self.frame_id == 0) 0 else self.frame_id - 1;
 }
 
 pub fn nextFrame(self: *Self) void {

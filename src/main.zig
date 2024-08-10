@@ -66,8 +66,9 @@ pub fn main() !void {
             .y = 20,
         },
         struct {
-            fn callback(value: u8, ctx: *Context) void {
+            fn callback(value: u8, ctx: *Context) u8 {
                 ctx.frame_opacity = value;
+                return ctx.frame_opacity;
             }
         }.callback,
     );
@@ -138,6 +139,22 @@ pub fn main() !void {
                     const color = canvas.get(Canvas.Point{ .x = x, .y = y }) orelse rl.Color.blank;
                     context.brush.color = color;
                 },
+                .Select => if (rl.isMouseButtonPressed(.mouse_button_left)) {
+                    context.brush.seletion_rect = .{
+                        .x = @divFloor(worldMosusePosition.x, canvas.cell_size.x),
+                        .y = @divFloor(worldMosusePosition.y, canvas.cell_size.y),
+                        .width = 1,
+                        .height = 1,
+                    };
+                } else if (rl.isMouseButtonReleased(.mouse_button_left)) {
+                    // TODO: set to last mode;
+                    context.brush.mode = .Draw;
+                } else if (context.brush.seletion_rect != null) {
+                    const x = @divFloor(worldMosusePosition.x, canvas.cell_size.x) + 1;
+                    const y = @divFloor(worldMosusePosition.y, canvas.cell_size.y) + 1;
+                    context.brush.seletion_rect.?.width = x - context.brush.seletion_rect.?.x;
+                    context.brush.seletion_rect.?.height = y - context.brush.seletion_rect.?.y;
+                },
             }
         } else {
             context.brush.hideOutline();
@@ -146,6 +163,26 @@ pub fn main() !void {
 
         if (context.command) |command| {
             switch (command) {
+                .IntoFrames => if (context.brush.seletion_rect != null and canvas.frames.items.len == 1) {
+                    var rect = context.brush.seletion_rect.?;
+                    const frames_x = cast(usize, @divTrunc(canvas.cell_size.x, rect.width));
+                    const frames_y = cast(usize, @divTrunc(canvas.cell_size.y, rect.height));
+
+                    for (0..frames_y) |y| {
+                        for (0..frames_x) |x| {
+                            rect.x = cast(f32, x) * rect.width;
+                            rect.y = cast(f32, y) * rect.height;
+                            try canvas.copyAeraToNewFrame(rect);
+                        }
+                    }
+                    canvas.size_in_pixels.x = rect.width;
+                    canvas.size_in_pixels.y = rect.height;
+                    canvas.deleteFrame(0);
+                    context.brush.seletion_rect = null;
+                    context.command = null;
+                } else {
+                    context.command = null;
+                },
                 .OpenMenu => {
                     ui.openMenu();
                     context.flags.menu_is_open = true;
@@ -273,13 +310,23 @@ pub fn main() !void {
             drawGrid(canvas.size_in_pixels, canvas.cell_size);
         }
 
+        if ((context.brush.mode == .Select and context.brush.seletion_rect != null) or context.brush.seletion_rect != null) {
+            const section_area = .{
+                .x = context.brush.seletion_rect.?.x * canvas.cell_size.x,
+                .y = context.brush.seletion_rect.?.y * canvas.cell_size.y,
+                .width = context.brush.seletion_rect.?.width * canvas.cell_size.x,
+                .height = context.brush.seletion_rect.?.height * canvas.cell_size.y,
+            };
+            rl.drawRectangleLinesEx(section_area, 5, rl.Color.black);
+        }
+
         rl.endMode2D();
         // -------    GUI     -------
 
         if (canvas.frames.items.len > 1) {
             rl.drawText(
-                rl.textFormat("Frame: %d", .{canvas.frame_id}),
-                screen_width - 100, // X
+                rl.textFormat("Frame: %d/%d", .{ canvas.frame_id + 1, canvas.frames.items.len }),
+                screen_width - 150, // X
                 20, // Y
                 20,
                 rl.Color.white,
@@ -297,6 +344,8 @@ pub fn main() !void {
                 20,
                 rl.Color.white,
             );
+        } else {
+            context.frame_opacity = 255;
         }
         try ui.draw(&context);
 

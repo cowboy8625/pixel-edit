@@ -10,6 +10,7 @@ pub const Mode = enum {
     Fill,
     Erase,
     ColorPicker,
+    Select,
 };
 
 const Self = @This();
@@ -18,6 +19,7 @@ color: rl.Color = rl.Color.ray_white,
 show_outline: bool = false,
 texture: rl.Texture2D,
 mode: Mode = .Draw,
+seletion_rect: ?rl.Rectangle = null,
 
 pub fn init() Self {
     return .{

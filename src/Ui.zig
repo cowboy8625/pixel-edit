@@ -220,8 +220,26 @@ pub fn init(menu_rect: rl.Rectangle) Self {
     grid.push(Button(*Context).initWithTextureNoVec(
         assets.loadTexture(assets.ERASER_TOOL_ICON),
         struct {
-            fn callback(arg: *Context) void {
-                arg.brush.mode = .Erase;
+            fn callback(ctx: *Context) void {
+                ctx.brush.mode = .Erase;
+            }
+        }.callback,
+    ));
+
+    grid.push(Button(*Context).initWithTextureNoVec(
+        assets.loadTexture(assets.FRAMES_ICON),
+        struct {
+            fn callback(ctx: *Context) void {
+                ctx.command = .IntoFrames;
+            }
+        }.callback,
+    ));
+
+    grid.push(Button(*Context).initWithTextureNoVec(
+        assets.loadTexture(assets.SELECTION_ICON),
+        struct {
+            fn callback(ctx: *Context) void {
+                ctx.brush.mode = .Select;
             }
         }.callback,
     ));
