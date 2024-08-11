@@ -32,6 +32,7 @@ const Flags = packed struct {
     color_picker_is_open: bool = false,
     menu_is_open: bool = false,
     gui_active: bool = false,
+    debugging: bool = false,
 };
 
 flags: Flags = .{},

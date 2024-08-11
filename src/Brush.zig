@@ -19,6 +19,7 @@ color: rl.Color = rl.Color.ray_white,
 show_outline: bool = false,
 texture: rl.Texture2D,
 mode: Mode = .Draw,
+last_mode: Mode = .Draw,
 seletion_rect: ?rl.Rectangle = null,
 
 pub fn init() Self {
@@ -29,6 +30,44 @@ pub fn init() Self {
 
 pub fn deinit(self: *Self) void {
     rl.unloadTexture(self.texture);
+}
+
+pub fn setMode(self: *Self, mode: Mode) void {
+    self.last_mode = self.mode;
+    self.mode = mode;
+}
+
+pub fn restoreLastBushMode(self: *Self) void {
+    self.mode = self.last_mode;
+}
+
+pub fn getSeletionRect(self: *const Self) ?rl.Rectangle {
+    const rect = self.seletion_rect orelse return null;
+    const x = if (rect.width <= 0)
+        rect.x + rect.width - 1
+    else
+        rect.x;
+
+    const y = if (rect.height <= 0)
+        rect.y + rect.height - 1
+    else
+        rect.y;
+
+    const width = if (rect.width <= 0)
+        -rect.width + 2
+    else
+        rect.width;
+
+    const height = if (rect.height <= 0)
+        -rect.height + 2
+    else
+        rect.height;
+    return .{
+        .x = x,
+        .y = y,
+        .width = width,
+        .height = height,
+    };
 }
 
 pub fn showOutline(self: *Self) void {

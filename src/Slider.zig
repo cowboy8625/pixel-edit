@@ -39,7 +39,8 @@ pub fn Slider(comptime V: type, comptime T: type) type {
                 if (rl.isMouseButtonDown(.mouse_button_left)) {
                     var value = cast(V, cast(f32, rl.getMouseX()) - self.rect.x);
                     value = @min(self.max, @max(value, self.min));
-                    self.value = self.callback(self.value, data);
+                    self.value = value;
+                    _ = self.callback(self.value, data);
                 }
                 active = true;
             }

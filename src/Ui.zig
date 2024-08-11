@@ -37,9 +37,7 @@ pub fn init(menu_rect: rl.Rectangle) Self {
                 var iter = grid.iterator();
 
                 while (iter.next()) |*widget| {
-                    if (widget.*.update(mouse_pos, context)) {
-                        active = true;
-                    }
+                    active = active or widget.*.update(mouse_pos, context);
                 }
                 context.flags.gui_active = active;
             }
@@ -176,7 +174,7 @@ pub fn init(menu_rect: rl.Rectangle) Self {
         assets.loadTexture(assets.PENCIL_TOOL_ICON),
         struct {
             fn callback(arg: *Context) void {
-                arg.brush.mode = .Draw;
+                arg.brush.setMode(.Draw);
             }
         }.callback,
     ));
@@ -194,7 +192,7 @@ pub fn init(menu_rect: rl.Rectangle) Self {
         assets.loadTexture(assets.LINE_TOOL_ICON),
         struct {
             fn callback(arg: *Context) void {
-                arg.brush.mode = .Line;
+                arg.brush.setMode(.Line);
             }
         }.callback,
     ));
@@ -212,7 +210,7 @@ pub fn init(menu_rect: rl.Rectangle) Self {
         assets.loadTexture(assets.COLOR_PICKER_ICON),
         struct {
             fn callback(ctx: *Context) void {
-                ctx.brush.mode = .ColorPicker;
+                ctx.brush.setMode(.ColorPicker);
             }
         }.callback,
     ));
@@ -221,7 +219,7 @@ pub fn init(menu_rect: rl.Rectangle) Self {
         assets.loadTexture(assets.ERASER_TOOL_ICON),
         struct {
             fn callback(ctx: *Context) void {
-                ctx.brush.mode = .Erase;
+                ctx.brush.setMode(.Erase);
             }
         }.callback,
     ));
@@ -239,7 +237,13 @@ pub fn init(menu_rect: rl.Rectangle) Self {
         assets.loadTexture(assets.SELECTION_ICON),
         struct {
             fn callback(ctx: *Context) void {
-                ctx.brush.mode = .Select;
+                switch (ctx.brush.mode) {
+                    .Select => ctx.brush.restoreLastBushMode(),
+                    else => {
+                        ctx.brush.setMode(.Select);
+                        ctx.brush.seletion_rect = null;
+                    },
+                }
             }
         }.callback,
     ));
@@ -329,17 +333,18 @@ pub fn closeLoadFileManager(self: *Self) void {
 }
 
 fn keyboardHandler(_: *Self, context: *Context) void {
-    if (rl.isKeyDown(.key_left_shift)) {
-        context.brush.mode = .Line;
-    } else if (rl.isKeyReleased(.key_left_shift)) {
-        context.brush.mode = .Draw;
+    if (rl.isKeyDown(.key_left_shift) and context.brush.mode == .Draw) {
+        context.brush.setMode(.Line);
+    } else if (rl.isKeyReleased(.key_left_shift) and context.brush.mode == .Line) {
+        context.brush.restoreLastBushMode();
     }
 }
 
 pub fn update(self: *Self, mouse_pos: rl.Vector2, context: *Context) !void {
-    if (rl.checkCollisionPointRec(mouse_pos, self.menu_rect) and self.is_menu_open) {
-        context.flags.gui_active = true;
+    if (!rl.checkCollisionPointRec(mouse_pos, self.menu_rect) and self.is_menu_open) {
+        return;
     }
+    context.flags.gui_active = true;
     try self.grid.update(mouse_pos, context);
     _ = self.open_menu_button.update(mouse_pos, context);
     self.keyboardHandler(context);
