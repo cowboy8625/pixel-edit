@@ -501,14 +501,18 @@ fn guiSetup() void {
     rl.setExitKey(rl.KeyboardKey.key_null);
 
     rg.guiSetStyle(
-        cast(i32, rg.GuiControl.default),
-        cast(i32, rg.GuiDefaultProperty.text_size),
+        rg.GuiState.state_normal,
+        // cast(i32, rg.GuiControl.default),
+        rg.GuiControlProperty.text_color_focused,
+        // cast(i32, rg.GuiDefaultProperty.text_size),
         20,
     );
 
     rg.guiSetStyle(
-        cast(i32, rg.GuiControl.default),
-        cast(i32, rg.GuiControlProperty.text_color_normal),
+        rg.GuiState.state_normal,
+        // cast(i32, rg.GuiControl.default),
+        // cast(i32, rg.GuiControlProperty.text_color_normal),
+        rg.GuiControlProperty.text_color_normal,
         rl.Color.black.toInt(),
     );
 }

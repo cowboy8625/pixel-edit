@@ -3,8 +3,8 @@
     .version = "0.1.0",
     .dependencies = .{
         .@"raylib-zig" = .{
-            .url = "https://github.com/Not-Nik/raylib-zig/archive/devel.tar.gz",
-            .hash = "122064a960fff658211413c4b3b56e1699719126c3d099d3ed43f9eaff17a936ad91",
+            .url = "https://github.com/Not-Nik/raylib-zig/archive/2176d37bcc83af8acdabf4f8ce51fd93060f15b2.tar.gz",
+            .hash = "1220275ac250aa893dd60d479de6e65002cebd74d6e2e062a2414c5e6e93c99f53cc",
         },
         // .@"zig-nfd" = .{
         //     .path = "../nfd.zig",
