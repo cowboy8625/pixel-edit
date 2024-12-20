@@ -7,10 +7,10 @@
             .url = "https://github.com/Not-Nik/raylib-zig/archive/2176d37bcc83af8acdabf4f8ce51fd93060f15b2.tar.gz",
             .hash = "1220275ac250aa893dd60d479de6e65002cebd74d6e2e062a2414c5e6e93c99f53cc",
         },
-        // .ziglua = .{
-        //     .url = "https://github.com/natecraddock/ziglua/archive/90dab7e72173709353dcaaa6d911bed7655c030d.tar.gz",
-        //     .hash = "12205923460670d52fb29fc74ec920d283dbe629a256787a54f4290748c05bee6ae1",
-        // },
+        .ziglua = .{
+            .url = "https://github.com/natecraddock/ziglua/archive/bcbfe40acd7218430b5fb7a880615b2bf15c02ac.tar.gz",
+            .hash = "1220a7983916ac2bcba3ded67174ef354012da525c7f85b0e48a416368a637012d78",
+        },
     },
     .paths = .{
         "",

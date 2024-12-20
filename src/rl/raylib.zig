@@ -20,6 +20,7 @@ pub fn getScreenToWorld2D(pos: Vector2(f32), camera: Camera2D) Vector2(f32) {
     return .{ .x = world_pos.x, .y = world_pos.y };
 }
 
+pub const getCharPressed = rl.getCharPressed;
 pub const imageDrawPixel = rl.imageDrawPixel;
 pub const genImageColor = rl.genImageColor;
 pub const loadRenderTexture = rl.loadRenderTexture;
