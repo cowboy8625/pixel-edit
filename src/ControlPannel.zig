@@ -24,7 +24,7 @@ pub fn init(allocator: std.mem.Allocator) !Self {
         .buttons = std.MultiArrayList(widget.Button){},
         .allocator = allocator,
     };
-    try self.add_button(.close_control_pannel, Asset.loadTexture(Asset.MENU_ICON));
+    try self.add_button("menu open and close", .close_control_pannel, Asset.loadTexture(Asset.MENU_ICON));
     return self;
 }
 
@@ -43,13 +43,14 @@ pub fn show(self: *Self) void {
     self.state = .Visible;
 }
 
-pub fn add_button(self: *Self, action: event.Event, texture: rl.Texture2D) !void {
+pub fn add_button(self: *Self, name: []const u8, action: event.Event, texture: rl.Texture2D) !void {
     const idx = self.buttons.len;
     const w: i32 = @intCast(texture.width);
     const h: i32 = @intCast(texture.height);
     const x: i32 = @intCast(@mod(idx, Self.WIDTH));
     const y: i32 = @intCast(@divFloor(idx, Self.WIDTH));
     try self.buttons.append(self.allocator, .{
+        .name = name,
         .x = x * (w + Self.PADDING) + Self.OFFSET,
         .y = y * (h + Self.PADDING) + Self.OFFSET,
         .action_left_click = action,
@@ -83,15 +84,29 @@ fn getCellWidth(self: *const Self) i32 {
     return textures[0].width + Self.PADDING;
 }
 
+fn drawHelpText(self: *const Self, help_text_id: ?usize) void {
+    const i = help_text_id orelse return;
+    const x = self.buttons.items(.x)[i] + 32;
+    const y = self.buttons.items(.y)[i];
+    const text_width = rl.measureText(self.buttons.items(.name)[i], 10);
+    const text_rect: rl.Rectangle(i32) = .{ .x = x - 5, .y = y - 5, .width = text_width + 10, .height = 20 };
+    rl.drawRectangleRoundedLinesEx(text_rect.as(f32), 0.5, 8, 0.3, rl.Color.black);
+    rl.drawRectangleRounded(text_rect.as(f32), 0.5, 8, rl.Color.white);
+    rl.drawText(self.buttons.items(.name)[i], x, y, 10, rl.Color.black);
+}
+
 fn drawClosed(self: *const Self) void {
     const texture = self.buttons.items(.texture)[0];
     const x = self.buttons.items(.x)[0];
     const y = self.buttons.items(.y)[0];
     const color = if (self.buttons.items(.hovered)[0]) self.buttons.items(.hover_color)[0] else rl.Color.white;
     rl.drawTexture(texture, x, y, color);
+    const help_text_id: ?usize = if (self.buttons.items(.hovered)[0]) 0 else null;
+    self.drawHelpText(help_text_id);
 }
 
 fn drawOpen(self: *const Self) void {
+    var help_text_id: ?usize = null;
     const h = rl.getScreenHeight();
     const w = self.getCellWidth() * Self.WIDTH + Self.OFFSET;
     const rect: rl.Rectangle(i32) = .{ .x = 0, .y = 0, .width = w, .height = h };
@@ -100,8 +115,11 @@ fn drawOpen(self: *const Self) void {
         const x = self.buttons.items(.x)[i];
         const y = self.buttons.items(.y)[i];
         const color = if (self.buttons.items(.hovered)[i]) self.buttons.items(.hover_color)[i] else rl.Color.white;
+        const is_hovered = self.buttons.items(.hovered)[i];
         rl.drawTexture(self.buttons.items(.texture)[i], x, y, color);
+        if (is_hovered) help_text_id = i;
     }
+    self.drawHelpText(help_text_id);
 }
 
 pub fn draw(self: *const Self) void {

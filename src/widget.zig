@@ -3,6 +3,7 @@ const rl = @import("rl/mod.zig");
 const event = @import("event.zig");
 
 pub const Button = struct {
+    name: []const u8,
     x: i32,
     y: i32,
     action_left_click: event.Event,
