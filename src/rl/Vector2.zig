@@ -73,7 +73,7 @@ pub fn Vector2(comptime T: type) type {
                     return .{ .x = @divFloor(self.x, other.x), .y = @divFloor(self.y, other.y) };
                 },
                 T => {
-                    return .{ .x = self.x / other, .y = self.y / other };
+                    return .{ .x = @divFloor(self.x, other), .y = @divFloor(self.y, other) };
                 },
                 comptime_int => {
                     return .{ .x = @divFloor(self.x, other), .y = @divFloor(self.y, other) };

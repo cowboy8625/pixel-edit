@@ -12,14 +12,14 @@ const PADDING: i32 = 5;
 const DEFAULT_CELL_WIDTH: i32 = 16;
 
 const State = enum {
-    Hidden,
-    Visible,
+    hidden,
+    visible,
 };
 
 buttons: std.MultiArrayList(widget.Button),
 inputs: std.MultiArrayList(widget.Input),
 allocator: std.mem.Allocator,
-state: State = .Visible,
+state: State = .visible,
 
 pub fn init(allocator: std.mem.Allocator) !Self {
     var self = Self{
@@ -30,7 +30,7 @@ pub fn init(allocator: std.mem.Allocator) !Self {
     try self.add_button("menu open and close", .close_control_pannel, Asset.loadTexture(Asset.MENU_ICON));
     try self.add_button("load image", .testing, Asset.loadTexture(Asset.LOAD_ICON));
     try self.add_button("save image", .testing, Asset.loadTexture(Asset.SAVE_ICON));
-    try self.add_button("pencil tool", .testing, Asset.loadTexture(Asset.PENCIL_TOOL_ICON));
+    try self.add_button("pencil tool", .draw, Asset.loadTexture(Asset.PENCIL_TOOL_ICON));
     try self.add_button("eraser tool", .testing, Asset.loadTexture(Asset.ERASER_TOOL_ICON));
     try self.add_button("bucket tool", .testing, Asset.loadTexture(Asset.BUCKET_TOOL_ICON));
     try self.add_button("grid", .testing, Asset.loadTexture(Asset.GRID_ICON));
@@ -61,11 +61,11 @@ pub fn deinit(self: *Self) void {
 }
 
 pub fn hide(self: *Self) void {
-    self.state = .Hidden;
+    self.state = .hidden;
 }
 
 pub fn show(self: *Self) void {
-    self.state = .Visible;
+    self.state = .visible;
 }
 
 pub fn add_button(self: *Self, name: []const u8, action: event.Event, texture: rl.Texture2D) !void {
@@ -103,6 +103,7 @@ pub fn update_input(self: *Self, input_kind: event.WidgetEvent, state: *main.Sta
     }
     const c = rl.getCharPressed();
     if (c == 0) return;
+    if (c < 48 or c > 57) return;
     const ch: u8 = @truncate(@as(u32, @intCast(c)));
     const contents = &self.inputs.items(.contents)[idx];
     const cursor = &self.inputs.items(.cursor)[idx];
@@ -112,7 +113,34 @@ pub fn update_input(self: *Self, input_kind: event.WidgetEvent, state: *main.Sta
 }
 
 pub fn update(self: *Self, mouse_pos: rl.Vector2(f32), events: *std.ArrayList(event.Event)) !void {
-    const menu_action: event.Event = if (self.state == .Visible) .close_control_pannel else .open_control_pannel;
+    switch (self.state) {
+        .hidden => try self.updateClosed(mouse_pos, events),
+        .visible => try self.updateOpen(mouse_pos, events),
+    }
+}
+
+fn updateClosed(self: *Self, mouse_pos: rl.Vector2(f32), events: *std.ArrayList(event.Event)) !void {
+    const menu_action: event.Event = if (self.state == .visible) .close_control_pannel else .open_control_pannel;
+    self.buttons.items(.action_left_click)[0] = menu_action;
+    const i = 0;
+    const pos = self.getButtonVector(i);
+    const x = pos.x;
+    const y = pos.y;
+    const texture = self.buttons.items(.texture)[i];
+    const w = texture.width;
+    const h = texture.height;
+    const rect: rl.Rectangle(i32) = .{ .x = x, .y = y, .width = w, .height = h };
+    const is_hovered = rl.checkCollisionPointRec(mouse_pos, rect.as(f32));
+    if (is_hovered and rl.isMouseButtonPressed(.mouse_button_left)) {
+        const action = self.buttons.items(.action_left_click)[i];
+        try events.append(action);
+        self.buttons.items(.hovered)[i] = false;
+    }
+    self.buttons.items(.hovered)[i] = is_hovered;
+}
+
+fn updateOpen(self: *Self, mouse_pos: rl.Vector2(f32), events: *std.ArrayList(event.Event)) !void {
+    const menu_action: event.Event = if (self.state == .visible) .close_control_pannel else .open_control_pannel;
     self.buttons.items(.action_left_click)[0] = menu_action;
     for (0..self.buttons.len) |i| {
         const pos = self.getButtonVector(i);
@@ -227,7 +255,7 @@ fn drawInputs(self: *const Self) void {
 
 pub fn draw(self: *const Self) void {
     switch (self.state) {
-        .Visible => self.drawOpen(),
-        .Hidden => self.drawClosed(),
+        .visible => self.drawOpen(),
+        .hidden => self.drawClosed(),
     }
 }
