@@ -9,4 +9,6 @@ pub const Event = union(enum) {
     close_control_pannel: void,
     open_control_pannel: void,
     clicked: WidgetEvent,
+    open_color_wheel: void,
+    close_color_wheel: void,
 };

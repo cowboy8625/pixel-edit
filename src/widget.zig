@@ -3,8 +3,11 @@ const rl = @import("rl/mod.zig");
 const event = @import("event.zig");
 
 pub const Button = struct {
+    const Self = @This();
+    pub const Action = *const fn (*Self) event.Event;
     name: []const u8,
-    action_left_click: event.Event,
+    event: event.Event,
+    action_left_click: Self.Action,
     hovered: bool = false,
     hover_color: rl.Color,
     texture: rl.Texture2D,

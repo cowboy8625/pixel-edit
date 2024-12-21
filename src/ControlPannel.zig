@@ -27,25 +27,103 @@ pub fn init(allocator: std.mem.Allocator) !Self {
         .inputs = std.MultiArrayList(widget.Input){},
         .allocator = allocator,
     };
-    try self.add_button("menu open and close", .close_control_pannel, Asset.loadTexture(Asset.MENU_ICON));
-    try self.add_button("load image", .testing, Asset.loadTexture(Asset.LOAD_ICON));
-    try self.add_button("save image", .testing, Asset.loadTexture(Asset.SAVE_ICON));
-    try self.add_button("pencil tool", .draw, Asset.loadTexture(Asset.PENCIL_TOOL_ICON));
-    try self.add_button("eraser tool", .testing, Asset.loadTexture(Asset.ERASER_TOOL_ICON));
-    try self.add_button("bucket tool", .testing, Asset.loadTexture(Asset.BUCKET_TOOL_ICON));
-    try self.add_button("grid", .testing, Asset.loadTexture(Asset.GRID_ICON));
-    try self.add_button("color picker", .testing, Asset.loadTexture(Asset.COLOR_PICKER_ICON));
-    try self.add_button("color wheel", .testing, Asset.loadTexture(Asset.COLOR_WHEEL_ICON));
-    try self.add_button("rotate left", .testing, Asset.loadTexture(Asset.ROTATE_LEFT_ICON));
-    try self.add_button("play animation", .testing, Asset.loadTexture(Asset.PLAY_ICON));
-    try self.add_button("next frame", .testing, Asset.loadTexture(Asset.RIGHT_ARROW_ICON));
-    try self.add_button("previous frame", .testing, Asset.loadTexture(Asset.LEFT_ARROW_ICON));
-    try self.add_button("rotate right", .testing, Asset.loadTexture(Asset.ROTATE_RIGHT_ICON));
-    try self.add_button("draw line tool", .testing, Asset.loadTexture(Asset.LINE_TOOL_ICON));
-    try self.add_button("flip vertical", .testing, Asset.loadTexture(Asset.FLIP_VERTICAL_ICON));
-    try self.add_button("flip horizontal", .testing, Asset.loadTexture(Asset.FLIP_HORIZONTAL_ICON));
-    try self.add_button("frames tool", .testing, Asset.loadTexture(Asset.FRAMES_ICON));
-    try self.add_button("selection tool", .testing, Asset.loadTexture(Asset.SELECTION_ICON));
+    try self.add_button("menu open and close", struct {
+        fn f(w: *widget.Button) event.Event {
+            const new_event: event.Event = if (w.event == event.Event.close_control_pannel) .open_control_pannel else .close_control_pannel;
+            return new_event;
+        }
+    }.f, .close_control_pannel, Asset.loadTexture(Asset.MENU_ICON));
+    try self.add_button("load image", struct {
+        fn f(w: *widget.Button) event.Event {
+            return w.event;
+        }
+    }.f, .testing, Asset.loadTexture(Asset.LOAD_ICON));
+    try self.add_button("save image", struct {
+        fn f(w: *widget.Button) event.Event {
+            return w.event;
+        }
+    }.f, .testing, Asset.loadTexture(Asset.SAVE_ICON));
+    try self.add_button("pencil tool", struct {
+        fn f(w: *widget.Button) event.Event {
+            return w.event;
+        }
+    }.f, .draw, Asset.loadTexture(Asset.PENCIL_TOOL_ICON));
+    try self.add_button("eraser tool", struct {
+        fn f(w: *widget.Button) event.Event {
+            return w.event;
+        }
+    }.f, .testing, Asset.loadTexture(Asset.ERASER_TOOL_ICON));
+    try self.add_button("bucket tool", struct {
+        fn f(w: *widget.Button) event.Event {
+            return w.event;
+        }
+    }.f, .testing, Asset.loadTexture(Asset.BUCKET_TOOL_ICON));
+    try self.add_button("grid", struct {
+        fn f(w: *widget.Button) event.Event {
+            return w.event;
+        }
+    }.f, .testing, Asset.loadTexture(Asset.GRID_ICON));
+    try self.add_button("color picker", struct {
+        fn f(w: *widget.Button) event.Event {
+            return w.event;
+        }
+    }.f, .testing, Asset.loadTexture(Asset.COLOR_PICKER_ICON));
+    try self.add_button("color wheel", struct {
+        fn f(w: *widget.Button) event.Event {
+            const new_event: event.Event = if (w.event == event.Event.close_color_wheel) .open_color_wheel else .close_color_wheel;
+            return new_event;
+        }
+    }.f, .open_color_wheel, Asset.loadTexture(Asset.COLOR_WHEEL_ICON));
+    try self.add_button("rotate left", struct {
+        fn f(w: *widget.Button) event.Event {
+            return w.event;
+        }
+    }.f, .testing, Asset.loadTexture(Asset.ROTATE_LEFT_ICON));
+    try self.add_button("play animation", struct {
+        fn f(w: *widget.Button) event.Event {
+            return w.event;
+        }
+    }.f, .testing, Asset.loadTexture(Asset.PLAY_ICON));
+    try self.add_button("next frame", struct {
+        fn f(w: *widget.Button) event.Event {
+            return w.event;
+        }
+    }.f, .testing, Asset.loadTexture(Asset.RIGHT_ARROW_ICON));
+    try self.add_button("previous frame", struct {
+        fn f(w: *widget.Button) event.Event {
+            return w.event;
+        }
+    }.f, .testing, Asset.loadTexture(Asset.LEFT_ARROW_ICON));
+    try self.add_button("rotate right", struct {
+        fn f(w: *widget.Button) event.Event {
+            return w.event;
+        }
+    }.f, .testing, Asset.loadTexture(Asset.ROTATE_RIGHT_ICON));
+    try self.add_button("draw line tool", struct {
+        fn f(w: *widget.Button) event.Event {
+            return w.event;
+        }
+    }.f, .testing, Asset.loadTexture(Asset.LINE_TOOL_ICON));
+    try self.add_button("flip vertical", struct {
+        fn f(w: *widget.Button) event.Event {
+            return w.event;
+        }
+    }.f, .testing, Asset.loadTexture(Asset.FLIP_VERTICAL_ICON));
+    try self.add_button("flip horizontal", struct {
+        fn f(w: *widget.Button) event.Event {
+            return w.event;
+        }
+    }.f, .testing, Asset.loadTexture(Asset.FLIP_HORIZONTAL_ICON));
+    try self.add_button("frames tool", struct {
+        fn f(w: *widget.Button) event.Event {
+            return w.event;
+        }
+    }.f, .testing, Asset.loadTexture(Asset.FRAMES_ICON));
+    try self.add_button("selection tool", struct {
+        fn f(w: *widget.Button) event.Event {
+            return w.event;
+        }
+    }.f, .testing, Asset.loadTexture(Asset.SELECTION_ICON));
     try self.add_input("Width", .{ .clicked = .width_input });
     try self.add_input("Height", .{ .clicked = .height_input });
 
@@ -68,10 +146,17 @@ pub fn show(self: *Self) void {
     self.state = .visible;
 }
 
-pub fn add_button(self: *Self, name: []const u8, action: event.Event, texture: rl.Texture2D) !void {
+pub fn add_button(
+    self: *Self,
+    name: []const u8,
+    action_left_click: widget.Button.Action,
+    default_event: event.Event,
+    texture: rl.Texture2D,
+) !void {
     try self.buttons.append(self.allocator, .{
         .name = name,
-        .action_left_click = action,
+        .event = default_event,
+        .action_left_click = action_left_click,
         .hover_color = rl.Color.fromInt(0x343028FF),
         .texture = texture,
     });
@@ -120,43 +205,49 @@ pub fn update(self: *Self, mouse_pos: rl.Vector2(f32), events: *std.ArrayList(ev
 }
 
 fn updateClosed(self: *Self, mouse_pos: rl.Vector2(f32), events: *std.ArrayList(event.Event)) !void {
-    const menu_action: event.Event = if (self.state == .visible) .close_control_pannel else .open_control_pannel;
-    self.buttons.items(.action_left_click)[0] = menu_action;
     const i = 0;
     const pos = self.getButtonVector(i);
-    const x = pos.x;
-    const y = pos.y;
-    const texture = self.buttons.items(.texture)[i];
-    const w = texture.width;
-    const h = texture.height;
-    const rect: rl.Rectangle(i32) = .{ .x = x, .y = y, .width = w, .height = h };
+    var button = self.buttons.get(i);
+    const rect = rl.Rectangle(i32).from2vec2(
+        pos,
+        .{
+            .x = button.texture.width,
+            .y = button.texture.height,
+        },
+    );
     const is_hovered = rl.checkCollisionPointRec(mouse_pos, rect.as(f32));
     if (is_hovered and rl.isMouseButtonPressed(.mouse_button_left)) {
-        const action = self.buttons.items(.action_left_click)[i];
-        try events.append(action);
+        const current_event = button.event;
+        const new_event = button.action_left_click(&button);
+        button.event = new_event;
+        try events.append(current_event);
         self.buttons.items(.hovered)[i] = false;
     }
-    self.buttons.items(.hovered)[i] = is_hovered;
+    button.hovered = is_hovered;
+    self.buttons.set(i, button);
 }
 
 fn updateOpen(self: *Self, mouse_pos: rl.Vector2(f32), events: *std.ArrayList(event.Event)) !void {
-    const menu_action: event.Event = if (self.state == .visible) .close_control_pannel else .open_control_pannel;
-    self.buttons.items(.action_left_click)[0] = menu_action;
     for (0..self.buttons.len) |i| {
         const pos = self.getButtonVector(i);
-        const x = pos.x;
-        const y = pos.y;
-        const texture = self.buttons.items(.texture)[i];
-        const w = texture.width;
-        const h = texture.height;
-        const rect: rl.Rectangle(i32) = .{ .x = x, .y = y, .width = w, .height = h };
+        var button = self.buttons.get(i);
+        const rect = rl.Rectangle(i32).from2vec2(
+            pos,
+            .{
+                .x = button.texture.width,
+                .y = button.texture.height,
+            },
+        );
         const is_hovered = rl.checkCollisionPointRec(mouse_pos, rect.as(f32));
         if (is_hovered and rl.isMouseButtonPressed(.mouse_button_left)) {
-            const action = self.buttons.items(.action_left_click)[i];
-            try events.append(action);
+            const current_event = button.event;
+            const new_event = button.action_left_click(&button);
+            button.event = new_event;
+            try events.append(current_event);
             self.buttons.items(.hovered)[i] = false;
         }
-        self.buttons.items(.hovered)[i] = is_hovered;
+        button.hovered = is_hovered;
+        self.buttons.set(i, button);
     }
 
     for (0..self.inputs.len) |i| {
