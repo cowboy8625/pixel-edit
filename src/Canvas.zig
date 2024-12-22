@@ -18,7 +18,7 @@ pub fn init(bounding_box: rl.Rectangle(i32), allocator: std.mem.Allocator) !Self
     };
     errdefer self.deinit();
 
-    const bb_size = bounding_box.getSize().sub(1).mul(self.pixels_size);
+    const bb_size = bounding_box.getSize().mul(self.pixels_size);
     const bb_pos = bounding_box.getPos();
     const bb = rl.Rectangle(i32).from2vec2(bb_pos, bb_size);
     self.bounding_box = bb;

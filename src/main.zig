@@ -6,32 +6,12 @@ const ControlPannel = @import("ControlPannel.zig");
 const ColorWheel = @import("ColorWheel.zig");
 const Canvas = @import("Canvas.zig");
 
-fn centerScreenX(comptime T: type) T {
-    const value = @divFloor(rl.getScreenWidth(), 2);
-    return rl.cast(T, value);
-}
-
-fn centerScreenY(comptime T: type) T {
-    const value = @divFloor(rl.getScreenHeight(), 2);
-    return rl.cast(T, value);
-}
-
-pub const State = enum {
-    draw,
-    line,
-    fill,
-    erase,
-    color_picker,
-    select,
-    widget_width_input,
-    widget_height_input,
-    none,
-};
-
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
     defer _ = gpa.deinit();
+
+    // ---------- SETUP ----------
 
     rl.initWindow(800, 600, "Pixel Edit");
     defer rl.closeWindow();
@@ -46,6 +26,8 @@ pub fn main() !void {
     defer canvas.deinit();
 
     var color_wheel = ColorWheel.init(.{ .x = 200, .y = 200, .width = 200, .height = 200 });
+
+    // -------- END SETUP --------
 
     rl.setTargetFPS(60);
     while (!rl.windowShouldClose()) {
@@ -111,3 +93,25 @@ pub fn main() !void {
         control_pannel.draw();
     }
 }
+
+fn centerScreenX(comptime T: type) T {
+    const value = @divFloor(rl.getScreenWidth(), 2);
+    return rl.cast(T, value);
+}
+
+fn centerScreenY(comptime T: type) T {
+    const value = @divFloor(rl.getScreenHeight(), 2);
+    return rl.cast(T, value);
+}
+
+pub const State = enum {
+    draw,
+    line,
+    fill,
+    erase,
+    color_picker,
+    select,
+    widget_width_input,
+    widget_height_input,
+    none,
+};

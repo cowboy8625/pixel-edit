@@ -82,6 +82,8 @@ pub fn drawTextureEx(texture: Texture2D, position: Vector2(f32), rotation: f32, 
     rl.drawTextureEx(texture, position.as(rl.Vector2), rotation, scale, tint);
 }
 
+pub const drawCircle = rl.drawCircle;
+
 pub fn drawLineV(pos1: Vector2(f32), pos2: Vector2(f32), color: Color) void {
     rl.drawLineV(pos1.as(rl.Vector2), pos2.as(rl.Vector2), color);
 }
@@ -89,6 +91,8 @@ pub fn drawLineV(pos1: Vector2(f32), pos2: Vector2(f32), color: Color) void {
 pub fn drawCircleV(pos: Vector2(f32), radius: f32, color: Color) void {
     rl.drawCircleV(pos.as(rl.Vector2), radius, color);
 }
+
+pub const drawRectangle = rl.drawRectangle;
 
 pub fn drawRectangleV(position: Vector2(f32), size: Vector2(f32), color: Color) void {
     rl.drawRectangleV(position.as(rl.Vector2), size.as(rl.Vector2), color);
