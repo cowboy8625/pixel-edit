@@ -80,13 +80,23 @@ pub fn add_input(self: *Self, name: []const u8, action: event.Event, default_val
     });
 }
 
-pub fn update_input(self: *Self, input_kind: event.WidgetEvent, state: *main.State) void {
+pub fn updateInput(self: *Self, input_kind: event.WidgetEvent, state: *main.State, events: *std.ArrayList(event.Event)) !void {
     const idx: usize = switch (input_kind) {
         .width_input => 0,
         .height_input => 1,
     };
-
     if (rl.isKeyPressed(.key_enter)) {
+        const contents = self.inputs.items(.contents)[idx];
+        const cursor = self.inputs.items(.cursor)[idx];
+        const num = std.fmt.parseInt(u8, contents[0..cursor], 10) catch |e| {
+            std.log.err("parse error: {s} {s}\n", .{ contents, @errorName(e) });
+            return;
+        };
+        switch (idx) {
+            0 => try events.append(.{ .set_canvas_width = num }),
+            1 => try events.append(.{ .set_canvas_height = num }),
+            else => unreachable,
+        }
         state.* = .none;
     } else if (rl.isKeyPressed(.key_backspace)) {
         const contents = &self.inputs.items(.contents)[idx];

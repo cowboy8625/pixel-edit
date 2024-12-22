@@ -36,6 +36,20 @@ pub fn deinit(self: *Self) void {
     self.frames.deinit();
 }
 
+pub fn setWidth(self: *Self, width: i32) void {
+    self.bounding_box.width = width * self.pixels_size;
+    for (self.frames.items) |*f| {
+        f.bounding_box.width = width;
+    }
+}
+
+pub fn setHeight(self: *Self, height: i32) void {
+    self.bounding_box.height = height * self.pixels_size;
+    for (self.frames.items) |*f| {
+        f.bounding_box.height = height;
+    }
+}
+
 pub fn getCurrentFramePtr(self: *Self) ?*Frame {
     if (self.current_frame >= self.frames.items.len) return null;
     return &self.frames.items[self.current_frame];

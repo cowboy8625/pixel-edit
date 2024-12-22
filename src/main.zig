@@ -67,6 +67,8 @@ pub fn main() !void {
                 },
                 .open_color_wheel => color_wheel.show(),
                 .close_color_wheel => color_wheel.hide(),
+                .set_canvas_width => |width| canvas.setWidth(width),
+                .set_canvas_height => |height| canvas.setHeight(height),
             }
         }
 
@@ -85,10 +87,10 @@ pub fn main() !void {
             .color_picker => std.debug.print("color_picker\n", .{}),
             .select => std.debug.print("select\n", .{}),
             .widget_width_input => {
-                control_pannel.update_input(.width_input, &state);
+                try control_pannel.updateInput(.width_input, &state, &events);
             },
             .widget_height_input => {
-                control_pannel.update_input(.height_input, &state);
+                try control_pannel.updateInput(.height_input, &state, &events);
             },
             .none => {},
         }

@@ -11,4 +11,6 @@ pub const Event = union(enum) {
     clicked: WidgetEvent,
     open_color_wheel: void,
     close_color_wheel: void,
+    set_canvas_width: i32,
+    set_canvas_height: i32,
 };
