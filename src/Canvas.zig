@@ -67,6 +67,14 @@ pub fn insert(self: *Self, cursor: rl.Vector2(i32), color: rl.Color) !bool {
     return try frame.insert(pixel, color);
 }
 
+pub fn update(self: *Self) void {
+    if (!rl.isMouseButtonDown(.mouse_button_right)) return;
+    const cursor = rl.getMousePosition().as(i32);
+    if (!self.bounding_box.contains(cursor)) return;
+    self.bounding_box.x = cursor.x - @divFloor(self.bounding_box.width, 2);
+    self.bounding_box.y = cursor.y - @divFloor(self.bounding_box.height, 2);
+}
+
 pub fn draw(self: *const Self) void {
     rl.drawRectangleRec(
         self.bounding_box.as(f32),

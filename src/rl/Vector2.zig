@@ -51,6 +51,11 @@ pub fn Vector2(comptime T: type) type {
                 T, comptime_int => {
                     return .{ .x = self.x - other, .y = self.y - other };
                 },
+                rl.Vector2 => if (T == f32) {
+                    return .{ .x = self.x - other.x, .y = self.y - other.y };
+                } else {
+                    @compileError("Unsupported type " ++ @typeName(@TypeOf(other)));
+                },
                 else => @compileError("Unsupported type " ++ @typeName(@TypeOf(other))),
             }
         }

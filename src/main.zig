@@ -20,8 +20,8 @@ pub fn main() !void {
     defer rl.closeWindow();
 
     var canvas = try Canvas.init(.{
-        .x = centerScreenX(i32),
-        .y = centerScreenY(i32),
+        .x = 0,
+        .y = 0,
         .width = 16,
         .height = 16,
     }, allocator);
@@ -40,12 +40,30 @@ pub fn main() !void {
 
     var color_wheel = ColorWheel.init(.{ .x = 200, .y = 200, .width = 200, .height = 200 });
 
+    // var camera = rl.Camera2D{
+    //     .offset = .{
+    //         .x = centerScreenX(f32),
+    //         .y = centerScreenY(f32),
+    //     },
+    //     .target = .{ .x = 0, .y = 0 },
+    //     .rotation = 0,
+    //     .zoom = 1,
+    // };
+
     // -------- END SETUP --------
 
     rl.setTargetFPS(60);
     while (!rl.windowShouldClose()) {
         color_wheel.update();
         try control_pannel.update(rl.getMousePosition(), &events);
+
+        if (rl.isMouseButtonDown(.mouse_button_right)) {
+            const cursor = rl.getMousePosition().as(i32);
+            if (canvas.bounding_box.contains(cursor)) {
+                canvas.bounding_box.x = cursor.x - @divFloor(canvas.bounding_box.width, 2);
+                canvas.bounding_box.y = cursor.y - @divFloor(canvas.bounding_box.height, 2);
+            }
+        }
 
         for (events.items) |e| {
             switch (e) {
@@ -101,10 +119,11 @@ pub fn main() !void {
         // -------- DRAW --------
         rl.beginDrawing();
         rl.clearBackground(rl.Color.fromInt(0x21242bFF));
-        rl.endDrawing();
+        defer rl.endDrawing();
+
+        canvas.draw();
 
         color_wheel.draw();
-        canvas.draw();
         control_pannel.draw();
     }
 }
