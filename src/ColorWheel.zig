@@ -22,6 +22,10 @@ pub fn hide(self: *Self) void {
     self.state = .hidden;
 }
 
+pub fn getSelectedColor(self: *const Self) rl.Color {
+    return rl.Color.fromHSV(self.selectedHue, self.selectedSV.x, self.selectedSV.y);
+}
+
 pub fn move(self: *Self) void {
     if (!rl.isMouseButtonDown(.mouse_button_right)) return;
     const cursor = rl.getMousePosition();

@@ -16,14 +16,24 @@ pub fn main() !void {
     rl.initWindow(800, 600, "Pixel Edit");
     defer rl.closeWindow();
 
-    var control_pannel = try ControlPannel.init(allocator);
+    var canvas = try Canvas.init(.{
+        .x = centerScreenX(i32),
+        .y = centerScreenY(i32),
+        .width = 16,
+        .height = 16,
+    }, allocator);
+    defer canvas.deinit();
+
+    var control_pannel = try ControlPannel.init(
+        allocator,
+        canvas.bounding_box.getSize().div(canvas.pixels_size),
+    );
     defer control_pannel.deinit();
+
     var events = std.ArrayList(event.Event).init(allocator);
     defer events.deinit();
-    var state: State = .none;
 
-    var canvas = try Canvas.init(.{ .x = centerScreenX(i32), .y = centerScreenY(i32), .width = 16, .height = 16 }, allocator);
-    defer canvas.deinit();
+    var state: State = .none;
 
     var color_wheel = ColorWheel.init(.{ .x = 200, .y = 200, .width = 200, .height = 200 });
 
@@ -66,7 +76,7 @@ pub fn main() !void {
             .draw => {
                 const cursor = rl.getMousePosition();
                 if (rl.isMouseButtonDown(.mouse_button_left)) {
-                    _ = try canvas.insert(cursor.as(i32));
+                    _ = try canvas.insert(cursor.as(i32), color_wheel.getSelectedColor());
                 }
             },
             .line => std.debug.print("line\n", .{}),

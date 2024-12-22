@@ -8,7 +8,6 @@ frames: std.ArrayList(Frame),
 current_frame: usize,
 // Defaults
 pixels_size: i32 = 16,
-selected_color: rl.Color = rl.Color.red,
 
 pub fn init(bounding_box: rl.Rectangle(i32), allocator: std.mem.Allocator) !Self {
     var self = Self{
@@ -47,11 +46,11 @@ pub fn getCurrentFrameConstPtr(self: *const Self) ?*const Frame {
     return &self.frames.items[self.current_frame];
 }
 
-pub fn insert(self: *Self, cursor: rl.Vector2(i32)) !bool {
+pub fn insert(self: *Self, cursor: rl.Vector2(i32), color: rl.Color) !bool {
     if (!self.bounding_box.contains(cursor)) return false;
     const frame = self.getCurrentFramePtr() orelse return false;
     const pixel = cursor.sub(self.bounding_box.getPos()).div(self.pixels_size);
-    return try frame.insert(pixel, self.selected_color);
+    return try frame.insert(pixel, color);
 }
 
 pub fn draw(self: *const Self) void {
