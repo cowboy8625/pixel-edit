@@ -13,6 +13,9 @@ pub fn main() !void {
 
     // ---------- SETUP ----------
 
+    rl.setConfigFlags(.{
+        .window_resizable = true,
+    });
     rl.initWindow(800, 600, "Pixel Edit");
     defer rl.closeWindow();
 
