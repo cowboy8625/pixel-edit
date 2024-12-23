@@ -19,12 +19,15 @@ pub fn main() !void {
     rl.initWindow(800, 600, "Pixel Edit");
     defer rl.closeWindow();
 
-    var canvas = try Canvas.init(.{
-        .x = 0,
-        .y = 0,
-        .width = 16,
-        .height = 16,
-    }, allocator);
+    var canvas = try Canvas.init(
+        .{
+            .x = 0,
+            .y = 0,
+            .width = 16,
+            .height = 16,
+        },
+        allocator,
+    );
     defer canvas.deinit();
 
     var control_pannel = try ControlPannel.init(
@@ -40,30 +43,31 @@ pub fn main() !void {
 
     var color_wheel = ColorWheel.init(.{ .x = 200, .y = 200, .width = 200, .height = 200 });
 
-    // var camera = rl.Camera2D{
-    //     .offset = .{
-    //         .x = centerScreenX(f32),
-    //         .y = centerScreenY(f32),
-    //     },
-    //     .target = .{ .x = 0, .y = 0 },
-    //     .rotation = 0,
-    //     .zoom = 1,
-    // };
+    var camera = rl.Camera2D{
+        .offset = .{ .x = 0, .y = 0 },
+        .target = .{ .x = 0, .y = 0 },
+        .rotation = 0,
+        .zoom = 1,
+    };
 
     // -------- END SETUP --------
 
     rl.setTargetFPS(60);
     while (!rl.windowShouldClose()) {
-        color_wheel.update();
+        const mouse = rl.getScreenToWorld2D(rl.getMousePosition(), camera);
+        color_wheel.update(&camera, mouse);
         try control_pannel.update(rl.getMousePosition(), &events);
+        // canvas.update(&camera);
 
-        if (rl.isMouseButtonDown(.mouse_button_right)) {
-            const cursor = rl.getMousePosition().as(i32);
-            if (canvas.bounding_box.contains(cursor)) {
-                canvas.bounding_box.x = cursor.x - @divFloor(canvas.bounding_box.width, 2);
-                canvas.bounding_box.y = cursor.y - @divFloor(canvas.bounding_box.height, 2);
-            }
+        if (rl.isMouseButtonDown(.mouse_button_right) and
+            rl.checkCollisionPointRec(mouse, canvas.bounding_box.as(f32)) and
+            !rl.checkCollisionPointRec(mouse, color_wheel.bounding_box.as(f32)))
+        {
+            var delta = rl.getMouseDelta();
+            delta = delta.scale(-1.0 / camera.zoom);
+            camera.target = camera.target.add(delta);
         }
+        updateCameraZoom(&camera, rl.getMousePosition(), mouse);
 
         for (events.items) |e| {
             switch (e) {
@@ -97,7 +101,8 @@ pub fn main() !void {
 
         switch (state) {
             .draw => {
-                const cursor = rl.getMousePosition();
+                var cursor = rl.getMousePosition();
+                cursor = rl.getScreenToWorld2D(cursor, camera);
                 if (rl.isMouseButtonDown(.mouse_button_left)) {
                     _ = try canvas.insert(cursor.as(i32), color_wheel.getSelectedColor());
                 }
@@ -121,9 +126,12 @@ pub fn main() !void {
         rl.clearBackground(rl.Color.fromInt(0x21242bFF));
         defer rl.endDrawing();
 
-        canvas.draw();
+        rl.beginMode2D(camera);
 
+        canvas.draw();
         color_wheel.draw();
+
+        rl.endMode2D();
         control_pannel.draw();
     }
 }
@@ -149,3 +157,20 @@ pub const State = enum {
     widget_height_input,
     none,
 };
+
+fn updateCameraZoom(camera: *rl.Camera2D, pos: rl.Vector2(f32), worldMousePosition: rl.Vector2(f32)) void {
+    const wheel = rl.getMouseWheelMove();
+
+    if (wheel != 0) {
+        const zoomIncrement = 0.1;
+        camera.zoom += wheel * zoomIncrement;
+
+        if (camera.zoom < 0.1) camera.zoom = 0.1; // Minimum zoom level
+        if (camera.zoom > 3.0) camera.zoom = 3.0; // Maximum zoom level
+
+        // Adjust camera target based on zoom
+        const mousePositionAfter = rl.getScreenToWorld2D(pos, camera.*);
+        camera.target.x -= (mousePositionAfter.x - worldMousePosition.x);
+        camera.target.y -= (mousePositionAfter.y - worldMousePosition.y);
+    }
+}
