@@ -26,27 +26,26 @@ pub fn getSelectedColor(self: *const Self) rl.Color {
     return rl.Color.fromHSV(self.selectedHue, self.selectedSV.x, self.selectedSV.y);
 }
 
-pub fn move(self: *Self) void {
+pub fn move(self: *Self, camera: *rl.Camera2D) void {
     if (!rl.isMouseButtonDown(.mouse_button_right)) return;
-    const cursor = rl.getMousePosition();
+    var cursor = rl.getMousePosition();
+    cursor = rl.getScreenToWorld2D(cursor, camera.*);
     if (!self.bounding_box.contains(cursor)) return;
     self.bounding_box.x = cursor.x - self.bounding_box.width / 2;
     self.bounding_box.y = cursor.y - self.bounding_box.height / 2;
 }
 
-pub fn update(self: *Self) void {
+pub fn update(self: *Self, camera: *rl.Camera2D, mouse: rl.Vector2(f32)) void {
     if (self.state == .hidden) return;
-    self.move();
+    self.move(camera);
     if (!rl.isMouseButtonDown(.mouse_button_left)) return;
-    const mouse = rl.getMousePosition();
 
-    // Check Hue Slider
-    const hueRect = rl.Rectangle(f32).init(50, 50, 300, 20);
+    const hueRect = self.getHueRect();
     if (rl.checkCollisionPointRec(mouse, hueRect)) {
         self.selectedHue = ((mouse.x - hueRect.x) / hueRect.width) * 360.0;
     }
 
-    const svRect = rl.Rectangle(f32).init(50, 100, 300, 300);
+    const svRect = self.getSVRect();
     if (rl.checkCollisionPointRec(mouse, svRect)) {
         self.selectedSV.x = (mouse.x - svRect.x) / svRect.width;
         self.selectedSV.y = 1.0 - (mouse.y - svRect.y) / svRect.height;
@@ -60,24 +59,37 @@ pub fn draw(self: *const Self) void {
     }
 }
 
+fn getHueRect(self: *const Self) rl.Rectangle(f32) {
+    return rl.Rectangle(f32).init(self.bounding_box.x, self.bounding_box.y, 200, 15);
+}
+
+fn getSVRect(self: *const Self) rl.Rectangle(f32) {
+    return rl.Rectangle(f32).init(self.bounding_box.x, self.bounding_box.y + 20, 200, 180);
+}
+
+fn getSelectedColorRect(self: *const Self) rl.Rectangle(f32) {
+    return rl.Rectangle(f32).init(self.bounding_box.x + self.bounding_box.width + 20, self.bounding_box.y, 64, 64);
+}
+
 fn drawVisible(self: *const Self) void {
-    // rl.drawRectangleRec(self.bounding_box, rl.Color.green);
-    // rl.Color.fromHSV(hue: f32, saturation: f32, value: f32)
+    const hueRect = self.getHueRect();
+    drawHueSlider(hueRect.as(i32));
+    rl.drawRectangleLinesEx(hueRect, 2, rl.Color.black);
 
-    // Draw Hue Slider
-    const hueRect = rl.Rectangle(i32).init(50, 50, 300, 20);
-    drawHueSlider(hueRect);
-    rl.drawRectangleLinesEx(hueRect.as(f32), 2, rl.Color.black);
+    const svRect = self.getSVRect();
+    drawSVBox(svRect.as(i32), self.selectedHue, rl.Color.fromHSV(self.selectedHue, self.selectedSV.x, self.selectedSV.y));
+    rl.drawRectangleLinesEx(svRect, 2, rl.Color.black);
 
-    // Draw Saturation/Value Box
-    const svRect = rl.Rectangle(i32).init(50, 100, 300, 300);
-    drawSVBox(svRect, self.selectedHue, rl.Color.fromHSV(self.selectedHue, self.selectedSV.x, self.selectedSV.y));
-    rl.drawRectangleLinesEx(svRect.as(f32), 2, rl.Color.black);
-
-    // Draw Current Color Indicator
     const selectedColor = rl.Color.fromHSV(self.selectedHue, self.selectedSV.x, self.selectedSV.y);
-    rl.drawRectangle(400, 50, 100, 100, selectedColor);
-    rl.drawText("Selected Color", 400, 160, 20, rl.Color.black);
+    const colorRect = self.getSelectedColorRect();
+    rl.drawRectangleRec(colorRect, selectedColor);
+    rl.drawTextZ(
+        rl.textFormat("#%X", .{self.getSelectedColor().toInt()}),
+        rl.cast(i32, self.bounding_box.x + self.bounding_box.width + 20),
+        rl.cast(i32, self.bounding_box.y + colorRect.height + 10),
+        20,
+        rl.Color.black,
+    );
 }
 
 fn drawHueSlider(rect: rl.Rectangle(i32)) void {
@@ -110,28 +122,3 @@ fn drawSVBox(rect: rl.Rectangle(i32), hue: f32, _: rl.Color) void {
     // if (pos) |p|
     //     rl.drawCircle(p.x, p.x, 5, rl.Color.black);
 }
-// fn drawSVBox(rect: rl.Rectangle(i32), hue: f32, currentColor: rl.Color) void {
-//     var image = rl.genImageColor(rect.width, rect.height, rl.Color.blank);
-//     defer rl.unloadImage(image);
-//
-//     for (0..rl.cast(usize, rect.height)) |y| {
-//         const value = 1.0 - (rl.cast(f32, y) / rl.cast(f32, rect.height));
-//         for (0..rl.cast(usize, rect.width)) |x| {
-//             const saturation = rl.cast(f32, x) / rl.cast(f32, rect.width);
-//             const color = rl.Color.fromHSV(hue, saturation, value);
-//
-//             rl.imageDrawPixel(&image, rl.cast(i32, x), rl.cast(i32, y), color);
-//         }
-//     }
-//
-//     const texture = rl.loadTextureFromImage(image);
-//     defer rl.unloadTexture(texture);
-//
-//     rl.drawTexture(texture, rect.x, rect.y, rl.Color.white);
-//
-//     const currentHSV = rl.Color.toHSV(currentColor);
-//     const markerX = rect.x + rl.cast(i32, currentHSV.y * rl.cast(f32, rect.width));
-//     const markerY = rect.y + rl.cast(i32, (1.0 - currentHSV.z) * rl.cast(f32, rect.height));
-//
-//     rl.drawCircle(markerX, markerY, 5, rl.Color.black);
-// }
