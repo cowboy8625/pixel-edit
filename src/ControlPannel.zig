@@ -4,6 +4,7 @@ const widget = @import("widget.zig");
 const Asset = @import("assets.zig");
 const event = @import("event.zig");
 const main = @import("main.zig");
+const Button = widget.Button(event.Event);
 
 const Self = @This();
 const WIDTH: i32 = 7;
@@ -11,19 +12,19 @@ const OFFSET: i32 = 10;
 const PADDING: i32 = 5;
 const DEFAULT_CELL_WIDTH: i32 = 16;
 
-const State = enum {
+pub const State = enum {
     hidden,
     visible,
 };
 
-buttons: std.MultiArrayList(widget.Button),
+buttons: std.MultiArrayList(Button),
 inputs: std.MultiArrayList(widget.Input),
 allocator: std.mem.Allocator,
 state: State = .visible,
 
 pub fn init(allocator: std.mem.Allocator, canvas_size: rl.Vector2(i32)) !Self {
     var self = Self{
-        .buttons = std.MultiArrayList(widget.Button){},
+        .buttons = std.MultiArrayList(Button){},
         .inputs = std.MultiArrayList(widget.Input){},
         .allocator = allocator,
     };
@@ -49,10 +50,15 @@ pub fn show(self: *Self) void {
     self.state = .visible;
 }
 
+pub fn getWidth(comptime T: type) T {
+    const result: T = OFFSET * 2 + PADDING * 2 + WIDTH * DEFAULT_CELL_WIDTH + 15;
+    return result;
+}
+
 pub fn add_button(
     self: *Self,
     name: []const u8,
-    action_left_click: widget.Button.Action,
+    action_left_click: Button.Action,
     default_event: event.Event,
     texture: rl.Texture2D,
 ) !void {
@@ -88,7 +94,7 @@ pub fn updateInput(self: *Self, input_kind: event.WidgetEvent, state: *main.Stat
     if (rl.isKeyPressed(.key_enter)) {
         const contents = self.inputs.items(.contents)[idx];
         const cursor = self.inputs.items(.cursor)[idx];
-        const num = std.fmt.parseInt(u8, contents[0..cursor], 10) catch |e| {
+        const num = std.fmt.parseInt(i32, contents[0..cursor], 10) catch |e| {
             std.log.err("parse error: {s} {s}\n", .{ contents, @errorName(e) });
             return;
         };
@@ -273,99 +279,99 @@ pub fn draw(self: *const Self) void {
 
 fn initButtons(self: *Self) !void {
     try self.add_button("menu open and close", struct {
-        fn f(w: *widget.Button) event.Event {
+        fn f(w: *Button) event.Event {
             const new_event: event.Event = if (w.event == event.Event.close_control_pannel) .open_control_pannel else .close_control_pannel;
             return new_event;
         }
     }.f, .close_control_pannel, Asset.loadTexture(Asset.MENU_ICON));
     try self.add_button("load image", struct {
-        fn f(w: *widget.Button) event.Event {
+        fn f(w: *Button) event.Event {
             return w.event;
         }
     }.f, .testing, Asset.loadTexture(Asset.LOAD_ICON));
     try self.add_button("save image", struct {
-        fn f(w: *widget.Button) event.Event {
+        fn f(w: *Button) event.Event {
             return w.event;
         }
-    }.f, .testing, Asset.loadTexture(Asset.SAVE_ICON));
+    }.f, .open_save_file_browser, Asset.loadTexture(Asset.SAVE_ICON));
     try self.add_button("pencil tool", struct {
-        fn f(w: *widget.Button) event.Event {
+        fn f(w: *Button) event.Event {
             return w.event;
         }
     }.f, .draw, Asset.loadTexture(Asset.PENCIL_TOOL_ICON));
     try self.add_button("eraser tool", struct {
-        fn f(w: *widget.Button) event.Event {
+        fn f(w: *Button) event.Event {
             return w.event;
         }
     }.f, .testing, Asset.loadTexture(Asset.ERASER_TOOL_ICON));
     try self.add_button("bucket tool", struct {
-        fn f(w: *widget.Button) event.Event {
+        fn f(w: *Button) event.Event {
             return w.event;
         }
     }.f, .testing, Asset.loadTexture(Asset.BUCKET_TOOL_ICON));
     try self.add_button("grid", struct {
-        fn f(w: *widget.Button) event.Event {
+        fn f(w: *Button) event.Event {
             return w.event;
         }
     }.f, .testing, Asset.loadTexture(Asset.GRID_ICON));
     try self.add_button("color picker", struct {
-        fn f(w: *widget.Button) event.Event {
+        fn f(w: *Button) event.Event {
             return w.event;
         }
     }.f, .testing, Asset.loadTexture(Asset.COLOR_PICKER_ICON));
     try self.add_button("color wheel", struct {
-        fn f(w: *widget.Button) event.Event {
+        fn f(w: *Button) event.Event {
             const new_event: event.Event = if (w.event == event.Event.close_color_wheel) .open_color_wheel else .close_color_wheel;
             return new_event;
         }
     }.f, .open_color_wheel, Asset.loadTexture(Asset.COLOR_WHEEL_ICON));
     try self.add_button("rotate left", struct {
-        fn f(w: *widget.Button) event.Event {
+        fn f(w: *Button) event.Event {
             return w.event;
         }
     }.f, .testing, Asset.loadTexture(Asset.ROTATE_LEFT_ICON));
     try self.add_button("play animation", struct {
-        fn f(w: *widget.Button) event.Event {
+        fn f(w: *Button) event.Event {
             return w.event;
         }
     }.f, .testing, Asset.loadTexture(Asset.PLAY_ICON));
     try self.add_button("next frame", struct {
-        fn f(w: *widget.Button) event.Event {
+        fn f(w: *Button) event.Event {
             return w.event;
         }
     }.f, .testing, Asset.loadTexture(Asset.RIGHT_ARROW_ICON));
     try self.add_button("previous frame", struct {
-        fn f(w: *widget.Button) event.Event {
+        fn f(w: *Button) event.Event {
             return w.event;
         }
     }.f, .testing, Asset.loadTexture(Asset.LEFT_ARROW_ICON));
     try self.add_button("rotate right", struct {
-        fn f(w: *widget.Button) event.Event {
+        fn f(w: *Button) event.Event {
             return w.event;
         }
     }.f, .testing, Asset.loadTexture(Asset.ROTATE_RIGHT_ICON));
     try self.add_button("draw line tool", struct {
-        fn f(w: *widget.Button) event.Event {
+        fn f(w: *Button) event.Event {
             return w.event;
         }
     }.f, .testing, Asset.loadTexture(Asset.LINE_TOOL_ICON));
     try self.add_button("flip vertical", struct {
-        fn f(w: *widget.Button) event.Event {
+        fn f(w: *Button) event.Event {
             return w.event;
         }
     }.f, .testing, Asset.loadTexture(Asset.FLIP_VERTICAL_ICON));
     try self.add_button("flip horizontal", struct {
-        fn f(w: *widget.Button) event.Event {
+        fn f(w: *Button) event.Event {
             return w.event;
         }
     }.f, .testing, Asset.loadTexture(Asset.FLIP_HORIZONTAL_ICON));
     try self.add_button("frames tool", struct {
-        fn f(w: *widget.Button) event.Event {
+        fn f(w: *Button) event.Event {
             return w.event;
         }
     }.f, .testing, Asset.loadTexture(Asset.FRAMES_ICON));
     try self.add_button("selection tool", struct {
-        fn f(w: *widget.Button) event.Event {
+        fn f(w: *Button) event.Event {
             return w.event;
         }
     }.f, .testing, Asset.loadTexture(Asset.SELECTION_ICON));

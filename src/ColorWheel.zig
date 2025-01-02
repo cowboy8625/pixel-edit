@@ -1,5 +1,6 @@
 const std = @import("std");
 const rl = @import("rl/mod.zig");
+const ControlPannel = @import("ControlPannel.zig");
 
 const Self = @This();
 const State = enum { visible, hidden };
@@ -26,18 +27,25 @@ pub fn getSelectedColor(self: *const Self) rl.Color {
     return rl.Color.fromHSV(self.selectedHue, self.selectedSV.x, self.selectedSV.y);
 }
 
-pub fn move(self: *Self, camera: *rl.Camera2D) void {
+pub fn move(self: *Self, cursor: rl.Vector2(f32)) void {
     if (!rl.isMouseButtonDown(.mouse_button_right)) return;
-    var cursor = rl.getMousePosition();
-    cursor = rl.getScreenToWorld2D(cursor, camera.*);
     if (!self.bounding_box.contains(cursor)) return;
     self.bounding_box.x = cursor.x - self.bounding_box.width / 2;
     self.bounding_box.y = cursor.y - self.bounding_box.height / 2;
 }
 
-pub fn update(self: *Self, camera: *rl.Camera2D, mouse: rl.Vector2(f32)) void {
+fn adjustPos(self: *Self, control_pannel_width: f32, control_pannel_state: ControlPannel.State) void {
+    const is_visible = control_pannel_state == .visible;
+    const is_touching = self.bounding_box.x <= control_pannel_width;
+    if (!is_visible) return;
+    if (!is_touching) return;
+    self.bounding_box.x = control_pannel_width;
+}
+
+pub fn update(self: *Self, mouse: rl.Vector2(f32), control_pannel_width: f32, control_pannel_state: ControlPannel.State) void {
     if (self.state == .hidden) return;
-    self.move(camera);
+    self.move(mouse);
+    self.adjustPos(control_pannel_width, control_pannel_state);
     if (!rl.isMouseButtonDown(.mouse_button_left)) return;
 
     const hueRect = self.getHueRect();

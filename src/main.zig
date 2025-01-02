@@ -5,6 +5,7 @@ const event = @import("event.zig");
 const ControlPannel = @import("ControlPannel.zig");
 const ColorWheel = @import("ColorWheel.zig");
 const Canvas = @import("Canvas.zig");
+const FileBrowser = @import("FileBrowser.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -54,38 +55,29 @@ pub fn main() !void {
 
     rl.setTargetFPS(60);
     while (!rl.windowShouldClose()) {
-        const mouse = rl.getScreenToWorld2D(rl.getMousePosition(), camera);
-        color_wheel.update(&camera, mouse);
-        try control_pannel.update(rl.getMousePosition(), &events);
-        // canvas.update(&camera);
+        const mouse = rl.getMousePosition();
+        const world_mouse = rl.getScreenToWorld2D(mouse, camera);
+        color_wheel.update(mouse, ControlPannel.getWidth(f32), control_pannel.state);
+        try control_pannel.update(mouse, &events);
 
         if (rl.isMouseButtonDown(.mouse_button_right) and
-            rl.checkCollisionPointRec(mouse, canvas.bounding_box.as(f32)) and
-            !rl.checkCollisionPointRec(mouse, color_wheel.bounding_box.as(f32)))
+            rl.checkCollisionPointRec(world_mouse, canvas.bounding_box.as(f32)) and
+            !(color_wheel.state == .visible and rl.checkCollisionPointRec(mouse, color_wheel.bounding_box.as(f32))))
         {
             var delta = rl.getMouseDelta();
             delta = delta.scale(-1.0 / camera.zoom);
             camera.target = camera.target.add(delta);
         }
-        updateCameraZoom(&camera, rl.getMousePosition(), mouse);
+        updateCameraZoom(&camera, mouse, world_mouse);
 
         for (events.items) |e| {
             switch (e) {
                 .testing => {
-                    std.debug.print("testing\n", .{});
+                    std.log.info("testing\n", .{});
                 },
-                .draw => {
-                    state = .draw;
-                    std.debug.print("draw tool\n", .{});
-                },
-                .close_control_pannel => {
-                    std.debug.print("close control pannel\n", .{});
-                    control_pannel.hide();
-                },
-                .open_control_pannel => {
-                    std.debug.print("open control pannel\n", .{});
-                    control_pannel.show();
-                },
+                .draw => state = .draw,
+                .close_control_pannel => control_pannel.hide(),
+                .open_control_pannel => control_pannel.show(),
                 .clicked => |we| switch (we) {
                     .width_input => state = .widget_width_input,
                     .height_input => state = .widget_height_input,
@@ -94,6 +86,11 @@ pub fn main() !void {
                 .close_color_wheel => color_wheel.hide(),
                 .set_canvas_width => |width| canvas.setWidth(width),
                 .set_canvas_height => |height| canvas.setHeight(height),
+                .open_save_file_browser => {
+                    var file_brower = try FileBrowser.init(allocator, .save);
+                    defer file_brower.deinit();
+                    try file_brower.open();
+                },
             }
         }
 
@@ -107,11 +104,11 @@ pub fn main() !void {
                     _ = try canvas.insert(cursor.as(i32), color_wheel.getSelectedColor());
                 }
             },
-            .line => std.debug.print("line\n", .{}),
-            .fill => std.debug.print("fill\n", .{}),
-            .erase => std.debug.print("erase\n", .{}),
-            .color_picker => std.debug.print("color_picker\n", .{}),
-            .select => std.debug.print("select\n", .{}),
+            .line => std.log.info("line\n", .{}),
+            .fill => std.log.info("fill\n", .{}),
+            .erase => std.log.info("erase\n", .{}),
+            .color_picker => std.log.info("color_picker\n", .{}),
+            .select => std.log.info("select\n", .{}),
             .widget_width_input => {
                 try control_pannel.updateInput(.width_input, &state, &events);
             },
@@ -127,11 +124,10 @@ pub fn main() !void {
         defer rl.endDrawing();
 
         rl.beginMode2D(camera);
-
         canvas.draw();
-        color_wheel.draw();
-
         rl.endMode2D();
+
+        color_wheel.draw();
         control_pannel.draw();
     }
 }
