@@ -303,7 +303,7 @@ fn initButtons(self: *Self) !void {
         fn f(w: *Button) event.Event {
             return w.event;
         }
-    }.f, .testing, Asset.loadTexture(Asset.ERASER_TOOL_ICON));
+    }.f, .erase, Asset.loadTexture(Asset.ERASER_TOOL_ICON));
     try self.add_button("bucket tool", struct {
         fn f(w: *Button) event.Event {
             return w.event;

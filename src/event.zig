@@ -6,6 +6,7 @@ pub const WidgetEvent = enum {
 pub const Event = union(enum) {
     testing: void,
     draw: void,
+    erase: void,
     close_control_pannel: void,
     open_control_pannel: void,
     clicked: WidgetEvent,

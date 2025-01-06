@@ -21,3 +21,7 @@ pub fn insert(self: *Self, pixel: rl.Vector2(i32), color: rl.Color) !bool {
     try self.pixels.put(pixel, color);
     return true;
 }
+
+pub fn remove(self: *Self, pixel: rl.Vector2(i32)) bool {
+    return self.pixels.remove(pixel);
+}

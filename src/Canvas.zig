@@ -68,6 +68,13 @@ pub fn insert(self: *Self, cursor: rl.Vector2(i32), color: rl.Color) !bool {
     return try frame.insert(pixel, color);
 }
 
+pub fn remove(self: *Self, cursor: rl.Vector2(i32)) !bool {
+    if (!self.bounding_box.contains(cursor)) return false;
+    const frame = self.getCurrentFramePtr() orelse return false;
+    const pixel = cursor.sub(self.bounding_box.getPos()).div(self.pixels_size);
+    return frame.remove(pixel);
+}
+
 pub fn clear(self: *Self) void {
     var frame = self.getCurrentFramePtr();
     if (frame == null) {

@@ -76,6 +76,7 @@ pub fn main() !void {
                     std.log.info("testing\n", .{});
                 },
                 .draw => state = .draw,
+                .erase => state = .erase,
                 .close_control_pannel => control_pannel.hide(),
                 .open_control_pannel => control_pannel.show(),
                 .clicked => |we| switch (we) {
@@ -109,7 +110,13 @@ pub fn main() !void {
             },
             .line => std.log.info("line\n", .{}),
             .fill => std.log.info("fill\n", .{}),
-            .erase => std.log.info("erase\n", .{}),
+            .erase => {
+                var cursor = rl.getMousePosition();
+                cursor = rl.getScreenToWorld2D(cursor, camera);
+                if (rl.isMouseButtonDown(.mouse_button_left)) {
+                    _ = try canvas.remove(cursor.as(i32));
+                }
+            },
             .color_picker => std.log.info("color_picker\n", .{}),
             .select => std.log.info("select\n", .{}),
             .widget_width_input => {
