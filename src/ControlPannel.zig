@@ -288,7 +288,7 @@ fn initButtons(self: *Self) !void {
         fn f(w: *Button) event.Event {
             return w.event;
         }
-    }.f, .testing, Asset.loadTexture(Asset.LOAD_ICON));
+    }.f, .open_load_file_browser, Asset.loadTexture(Asset.LOAD_ICON));
     try self.add_button("save image", struct {
         fn f(w: *Button) event.Event {
             return w.event;

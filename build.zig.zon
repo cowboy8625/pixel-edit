@@ -11,6 +11,10 @@
             .url = "https://github.com/natecraddock/ziglua/archive/bcbfe40acd7218430b5fb7a880615b2bf15c02ac.tar.gz",
             .hash = "1220a7983916ac2bcba3ded67174ef354012da525c7f85b0e48a416368a637012d78",
         },
+        .nfd = .{
+            .url = "https://github.com/fabioarnold/nfd-zig/archive/ad81729d33da30d5f4fd23718debec48245121ca.tar.gz",
+            .hash = "1220a679380847513262c8c5c474d4a415f9ecc4921c8c6aefbdbdce66cf2aa19ceb",
+        },
     },
     .paths = .{
         "",

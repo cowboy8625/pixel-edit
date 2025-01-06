@@ -8,6 +8,7 @@ frames: std.ArrayList(Frame),
 current_frame: usize,
 // Defaults
 pixels_size: i32 = 16,
+size_in_pixels: rl.Vector2(f32) = .{ .x = 1, .y = 1 },
 
 pub fn init(bounding_box: rl.Rectangle(i32), allocator: std.mem.Allocator) !Self {
     var self = Self{
@@ -65,6 +66,57 @@ pub fn insert(self: *Self, cursor: rl.Vector2(i32), color: rl.Color) !bool {
     const frame = self.getCurrentFramePtr() orelse return false;
     const pixel = cursor.sub(self.bounding_box.getPos()).div(self.pixels_size);
     return try frame.insert(pixel, color);
+}
+
+pub fn clear(self: *Self) void {
+    var frame = self.getCurrentFramePtr();
+    if (frame == null) {
+        @panic("Cannot clear empty frame");
+    }
+    frame.?.pixels.clearRetainingCapacity();
+}
+
+pub fn save(self: *Self, path: []const u8) void {
+    const width = self.size_in_pixels.x * rl.cast(f32, self.frames.items.len);
+    const height = self.size_in_pixels.y;
+    const target = rl.loadRenderTexture(rl.cast(i32, width), rl.cast(i32, height));
+    defer rl.unloadTexture(target.texture);
+
+    rl.beginTextureMode(target);
+    for (0.., self.frames.items) |idx, frame| {
+        const x_offset = idx * rl.cast(usize, self.size_in_pixels.x);
+        var iter = frame.pixels.iterator();
+        while (iter.next()) |kv| {
+            const pos = kv.key_ptr.*;
+            const color = kv.value_ptr.*;
+            rl.drawPixel(pos.x + rl.cast(i32, x_offset), rl.cast(i32, pos.y), color);
+        }
+    }
+    rl.endTextureMode();
+    var image = rl.loadImageFromTexture(target.texture);
+    rl.imageFlipVertical(&image);
+    const cpath: [*c]const u8 = @ptrCast(path);
+    _ = rl.exportImage(image, cpath);
+}
+
+pub fn load(self: *Self, path: []const u8) !void {
+    const cpath: [*c]const u8 = @ptrCast(path);
+    const image = rl.loadImage(cpath);
+    defer rl.unloadImage(image);
+    self.clear();
+    self.size_in_pixels = .{
+        .x = rl.cast(f32, image.width),
+        .y = rl.cast(f32, image.height),
+    };
+    const frame = self.getCurrentFramePtr() orelse @panic("Cannot load into empty frame");
+    for (0..rl.cast(usize, image.height)) |y| {
+        for (0..@intCast(image.width)) |x| {
+            const color = rl.getImageColor(image, rl.cast(i32, x), rl.cast(i32, y));
+            const pos = rl.Vector2(usize).init(x, y).as(i32);
+            try frame.pixels.put(pos, color);
+            // _ = try self.insert(pos, color);
+        }
+    }
 }
 
 pub fn draw(self: *const Self) void {

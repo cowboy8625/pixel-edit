@@ -5,7 +5,7 @@ const event = @import("event.zig");
 const ControlPannel = @import("ControlPannel.zig");
 const ColorWheel = @import("ColorWheel.zig");
 const Canvas = @import("Canvas.zig");
-const FileBrowser = @import("FileBrowser.zig");
+const nfd = @import("nfd");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -87,9 +87,12 @@ pub fn main() !void {
                 .set_canvas_width => |width| canvas.setWidth(width),
                 .set_canvas_height => |height| canvas.setHeight(height),
                 .open_save_file_browser => {
-                    var file_brower = try FileBrowser.init(allocator, .save);
-                    defer file_brower.deinit();
-                    try file_brower.open();
+                    const file_path = try nfd.saveFileDialog(null, null);
+                    if (file_path) |path| canvas.save(path);
+                },
+                .open_load_file_browser => {
+                    const file_path = try nfd.openFileDialog(null, null);
+                    if (file_path) |path| try canvas.load(path);
                 },
             }
         }

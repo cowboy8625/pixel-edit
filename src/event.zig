@@ -14,4 +14,5 @@ pub const Event = union(enum) {
     set_canvas_width: i32,
     set_canvas_height: i32,
     open_save_file_browser: void,
+    open_load_file_browser: void,
 };

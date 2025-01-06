@@ -20,6 +20,10 @@ pub fn getScreenToWorld2D(pos: Vector2(f32), camera: Camera2D) Vector2(f32) {
     return .{ .x = world_pos.x, .y = world_pos.y };
 }
 
+pub const loadImage = rl.loadImage;
+pub const exportImage = rl.exportImage;
+pub const imageFlipVertical = rl.imageFlipVertical;
+pub const loadImageFromTexture = rl.loadImageFromTexture;
 pub const getMouseWheelMove = rl.getMouseWheelMove;
 pub const getMouseDelta = rl.getMouseDelta;
 pub const ConfigFlags = rl.ConfigFlags;

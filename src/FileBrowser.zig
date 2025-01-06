@@ -21,6 +21,7 @@ const Self = @This();
 
 mode: Mode,
 path: [MAX_FILE_PATH]u8,
+path_len: usize,
 allocator: std.mem.Allocator,
 buttons: std.MultiArrayList(Button),
 labels: std.MultiArrayList(Label),
@@ -29,10 +30,14 @@ pub fn init(allocator: std.mem.Allocator, mode: Mode) !Self {
     var self: Self = .{
         .mode = mode,
         .path = [_]u8{0} ** MAX_FILE_PATH,
+        .path_len = 0,
         .allocator = allocator,
         .buttons = std.MultiArrayList(Button){},
         .labels = std.MultiArrayList(Label){},
     };
+
+    self.path[0] = '.';
+    self.path_len = 1;
 
     try self.buttons.append(self.allocator, .{
         .name = "Cancel",
@@ -103,7 +108,7 @@ fn isImage(path: []const u8) bool {
 
 fn createLabelsForCurrentPath(self: *Self) !void {
     const cwd = std.fs.cwd();
-    var dir = try cwd.openDir(".", .{ .iterate = true });
+    var dir = try cwd.openDir(self.path[0..self.path_len], .{ .iterate = true });
     defer dir.close();
 
     var iter = dir.iterate();
@@ -116,8 +121,8 @@ fn createLabelsForCurrentPath(self: *Self) !void {
                     .label = try self.allocator.dupeZ(u8, entry.name),
                     .event = .{ .select = index },
                     .action_left_click = struct {
-                        fn f(_: *Label) Event {
-                            return .open;
+                        fn f(l: *Label) Event {
+                            return l.event;
                         }
                     }.f,
                     .hover_color = rl.Color.fromInt(0x343028FF),
@@ -129,8 +134,8 @@ fn createLabelsForCurrentPath(self: *Self) !void {
                     .label = try self.allocator.dupeZ(u8, entry.name),
                     .event = .{ .select = index },
                     .action_left_click = struct {
-                        fn f(_: *Label) Event {
-                            return .save;
+                        fn f(l: *Label) Event {
+                            return l.event;
                         }
                     }.f,
                     .hover_color = rl.Color.fromInt(0x343028FF),
@@ -210,7 +215,38 @@ pub fn open(self: *Self) !void {
                     std.log.info("save", .{});
                 },
                 .select => |idx| {
+                    const cwd = std.fs.cwd();
+                    var dir = try cwd.openDir(self.path[0..self.path_len], .{ .iterate = true });
+                    defer dir.close();
+
+                    var iter = dir.iterate();
+
+                    var i: usize = 0;
+                    while (try iter.next()) |entry| {
+                        switch (entry.kind) {
+                            .directory => if (i == idx) {
+                                self.path[self.path_len] = '/';
+                                self.path_len += 1;
+                                std.mem.copyForwards(u8, self.path[self.path_len..], entry.name);
+                                self.path_len += entry.name.len;
+                                break;
+                            } else {
+                                i += 1;
+                            },
+                            .file => if (i == idx) {
+                                self.path[self.path_len] = '/';
+                                self.path_len += 1;
+                                std.mem.copyForwards(u8, self.path[self.path_len..], entry.name);
+                                self.path_len += entry.name.len;
+                                break;
+                            } else {
+                                i += 1;
+                            },
+                            else => continue,
+                        }
+                    }
                     std.log.info("select {d}", .{idx});
+                    std.log.info("{s}", .{self.path[0..self.path_len]});
                 },
             }
         }

@@ -47,6 +47,10 @@ fn addDependency(b: *std.Build, exe: *std.Build.Step.Compile, options: anytype) 
     // const ziglua = b.dependency("ziglua", options);
     // exe.root_module.addImport("ziglua", ziglua.module("ziglua"));
 
+    const nfd = b.dependency("nfd", .{});
+    const nfd_mod = nfd.module("nfd");
+    exe.root_module.addImport("nfd", nfd_mod);
+
     // https://github.com/Not-Nik/raylib-zig
     const raylib_dep = b.dependency("raylib-zig", options);
     const raylib = raylib_dep.module("raylib"); // main raylib module
