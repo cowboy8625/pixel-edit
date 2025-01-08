@@ -80,6 +80,7 @@ pub fn main() !void {
                 .draw => state = .draw,
                 .erase => state = .erase,
                 .bucket => state = .fill,
+                .color_picker => state = .color_picker,
                 .close_control_pannel => control_pannel.hide(),
                 .open_control_pannel => control_pannel.show(),
                 .clicked => |we| switch (we) {
@@ -126,7 +127,17 @@ pub fn main() !void {
                     }
                 }
             },
-            .color_picker => std.log.info("color_picker\n", .{}),
+            .color_picker => {
+                if (rl.isMouseButtonPressed(.mouse_button_left)) {
+                    const cursor = world_mouse.as(i32).sub(canvas.bounding_box.getPos()).div(canvas.pixels_size);
+                    const frame = canvas.getCurrentFramePtr() orelse @panic("No frame");
+                    if (frame.bounding_box.contains(cursor)) {
+                        if (frame.pixels.get(cursor)) |color| {
+                            color_wheel.setColor(color);
+                        }
+                    }
+                }
+            },
             .select => std.log.info("select\n", .{}),
             .widget_width_input => {
                 try control_pannel.updateInput(.width_input, &state, &events);

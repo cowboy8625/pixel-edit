@@ -8,6 +8,7 @@ pub const Event = union(enum) {
     draw: void,
     erase: void,
     bucket: void,
+    color_picker: void,
     close_control_pannel: void,
     open_control_pannel: void,
     clicked: WidgetEvent,

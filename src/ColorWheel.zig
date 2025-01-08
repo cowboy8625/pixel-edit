@@ -27,6 +27,13 @@ pub fn getSelectedColor(self: *const Self) rl.Color {
     return rl.Color.fromHSV(self.selectedHue, self.selectedSV.x, self.selectedSV.y);
 }
 
+pub fn setColor(self: *Self, color: rl.Color) void {
+    const hsv = color.toHSV();
+    self.selectedHue = hsv.x;
+    self.selectedSV.x = hsv.y;
+    self.selectedSV.y = hsv.z;
+}
+
 pub fn move(self: *Self, cursor: rl.Vector2(f32)) void {
     if (!rl.isMouseButtonDown(.mouse_button_right)) return;
     if (!self.bounding_box.contains(cursor)) return;

@@ -318,7 +318,7 @@ fn initButtons(self: *Self) !void {
         fn f(w: *Button) event.Event {
             return w.event;
         }
-    }.f, .testing, Asset.loadTexture(Asset.COLOR_PICKER_ICON));
+    }.f, .color_picker, Asset.loadTexture(Asset.COLOR_PICKER_ICON));
     try self.add_button("color wheel", struct {
         fn f(w: *Button) event.Event {
             const new_event: event.Event = if (w.event == event.Event.close_color_wheel) .open_color_wheel else .close_color_wheel;
