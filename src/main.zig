@@ -5,6 +5,7 @@ const event = @import("event.zig");
 const ControlPannel = @import("ControlPannel.zig");
 const ColorWheel = @import("ColorWheel.zig");
 const Canvas = @import("Canvas.zig");
+const algorithms = @import("algorithms.zig");
 const nfd = @import("nfd");
 
 pub fn main() !void {
@@ -21,19 +22,20 @@ pub fn main() !void {
     defer rl.closeWindow();
 
     var canvas = try Canvas.init(
+        allocator,
         .{
             .x = 0,
             .y = 0,
             .width = 16,
             .height = 16,
         },
-        allocator,
+        16,
     );
     defer canvas.deinit();
 
     var control_pannel = try ControlPannel.init(
         allocator,
-        canvas.bounding_box.getSize().div(canvas.pixels_size),
+        canvas.bounding_box.getSize(),
     );
     defer control_pannel.deinit();
 
@@ -61,7 +63,7 @@ pub fn main() !void {
         try control_pannel.update(mouse, &events);
 
         if (rl.isMouseButtonDown(.mouse_button_right) and
-            rl.checkCollisionPointRec(world_mouse, canvas.bounding_box.as(f32)) and
+            rl.checkCollisionPointRec(world_mouse, canvas.getVisiableRect(f32)) and
             !(color_wheel.state == .visible and rl.checkCollisionPointRec(mouse, color_wheel.bounding_box.as(f32))))
         {
             var delta = rl.getMouseDelta();
@@ -77,6 +79,7 @@ pub fn main() !void {
                 },
                 .draw => state = .draw,
                 .erase => state = .erase,
+                .bucket => state = .fill,
                 .close_control_pannel => control_pannel.hide(),
                 .open_control_pannel => control_pannel.show(),
                 .clicked => |we| switch (we) {
@@ -102,19 +105,25 @@ pub fn main() !void {
 
         switch (state) {
             .draw => {
-                var cursor = rl.getMousePosition();
-                cursor = rl.getScreenToWorld2D(cursor, camera);
                 if (rl.isMouseButtonDown(.mouse_button_left)) {
-                    _ = try canvas.insert(cursor.as(i32), color_wheel.getSelectedColor());
+                    _ = try canvas.insert(world_mouse.as(i32), color_wheel.getSelectedColor());
                 }
             },
             .line => std.log.info("line\n", .{}),
-            .fill => std.log.info("fill\n", .{}),
+            .fill => {
+                if (rl.isMouseButtonPressed(.mouse_button_left)) {
+                    const starting_point = world_mouse.as(i32);
+                    const color = color_wheel.getSelectedColor();
+                    try algorithms.floodFill(allocator, &canvas, color, starting_point);
+                }
+            },
             .erase => {
-                var cursor = rl.getMousePosition();
-                cursor = rl.getScreenToWorld2D(cursor, camera);
                 if (rl.isMouseButtonDown(.mouse_button_left)) {
-                    _ = try canvas.remove(cursor.as(i32));
+                    const cursor = world_mouse.as(i32).sub(canvas.bounding_box.getPos()).div(canvas.pixels_size);
+                    const frame = canvas.getCurrentFramePtr() orelse @panic("No frame");
+                    if (frame.bounding_box.contains(cursor)) {
+                        _ = frame.pixels.remove(cursor);
+                    }
                 }
             },
             .color_picker => std.log.info("color_picker\n", .{}),

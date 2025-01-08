@@ -6,27 +6,16 @@ const Self = @This();
 bounding_box: rl.Rectangle(i32),
 frames: std.ArrayList(Frame),
 current_frame: usize,
-// Defaults
-pixels_size: i32 = 16,
-size_in_pixels: rl.Vector2(f32) = .{ .x = 1, .y = 1 },
+pixels_size: i32,
 
-pub fn init(bounding_box: rl.Rectangle(i32), allocator: std.mem.Allocator) !Self {
-    var self = Self{
+pub fn init(allocator: std.mem.Allocator, bounding_box: rl.Rectangle(i32), pixels_size: i32) !Self {
+    var self = .{
         .bounding_box = bounding_box,
         .frames = std.ArrayList(Frame).init(allocator),
         .current_frame = 0,
+        .pixels_size = pixels_size,
     };
-    errdefer self.deinit();
-
-    const bb_size = bounding_box.getSize().mul(self.pixels_size);
-    const bb_pos = bounding_box.getPos();
-    const bb = rl.Rectangle(i32).from2vec2(bb_pos, bb_size);
-    self.bounding_box = bb;
-
-    const frame_bb = rl.Rectangle(i32).from2vec2(.{ .x = 0, .y = 0 }, bounding_box.getSize().sub(1));
-    const frame = Frame.init(frame_bb, allocator);
-    try self.frames.append(frame);
-
+    try self.frames.append(Frame.init(bounding_box, allocator));
     return self;
 }
 
@@ -37,18 +26,14 @@ pub fn deinit(self: *Self) void {
     self.frames.deinit();
 }
 
-pub fn setWidth(self: *Self, width: i32) void {
-    self.bounding_box.width = width * self.pixels_size;
-    for (self.frames.items) |*f| {
-        f.bounding_box.width = width;
-    }
-}
-
-pub fn setHeight(self: *Self, height: i32) void {
-    self.bounding_box.height = height * self.pixels_size;
-    for (self.frames.items) |*f| {
-        f.bounding_box.height = height;
-    }
+pub fn getVisiableRect(self: *const Self, comptime T: type) rl.Rectangle(T) {
+    const rect: rl.Rectangle(i32) = .{
+        .x = self.bounding_box.x,
+        .y = self.bounding_box.y,
+        .width = (self.bounding_box.width + 1) * self.pixels_size,
+        .height = (self.bounding_box.height + 1) * self.pixels_size,
+    };
+    return rect.as(T);
 }
 
 pub fn getCurrentFramePtr(self: *Self) ?*Frame {
@@ -61,11 +46,28 @@ pub fn getCurrentFrameConstPtr(self: *const Self) ?*const Frame {
     return &self.frames.items[self.current_frame];
 }
 
-pub fn insert(self: *Self, cursor: rl.Vector2(i32), color: rl.Color) !bool {
-    if (!self.bounding_box.contains(cursor)) return false;
-    const frame = self.getCurrentFramePtr() orelse return false;
-    const pixel = cursor.sub(self.bounding_box.getPos()).div(self.pixels_size);
-    return try frame.insert(pixel, color);
+pub fn setWidth(self: *Self, width: i32) void {
+    self.bounding_box.width = width;
+    for (self.frames.items) |*frame| {
+        frame.bounding_box.width = width;
+    }
+}
+
+pub fn setHeight(self: *Self, height: i32) void {
+    self.bounding_box.height = height;
+    for (self.frames.items) |*frame| {
+        frame.bounding_box.height = height;
+    }
+}
+
+pub fn insert(self: *Self, world_mouse: rl.Vector2(i32), color: rl.Color) !bool {
+    const cursor = world_mouse.as(i32).sub(self.bounding_box.getPos()).div(self.pixels_size);
+    const frame = self.getCurrentFramePtr() orelse @panic("No frame");
+    if (!frame.bounding_box.contains(cursor)) {
+        return false;
+    }
+    try frame.pixels.put(cursor, color);
+    return true;
 }
 
 pub fn remove(self: *Self, cursor: rl.Vector2(i32)) !bool {
@@ -73,6 +75,11 @@ pub fn remove(self: *Self, cursor: rl.Vector2(i32)) !bool {
     const frame = self.getCurrentFramePtr() orelse return false;
     const pixel = cursor.sub(self.bounding_box.getPos()).div(self.pixels_size);
     return frame.remove(pixel);
+}
+
+pub fn get(self: *const Self, cursor: rl.Vector2(i32)) ?rl.Color {
+    const frame = self.getCurrentFrameConstPtr() orelse return null;
+    return frame.pixels.get(cursor);
 }
 
 pub fn clear(self: *Self) void {
@@ -84,14 +91,15 @@ pub fn clear(self: *Self) void {
 }
 
 pub fn save(self: *Self, path: []const u8) void {
-    const width = self.size_in_pixels.x * rl.cast(f32, self.frames.items.len);
-    const height = self.size_in_pixels.y;
+    const rect = self.bounding_box.as(f32);
+    const width = rect.width * rl.cast(f32, self.frames.items.len);
+    const height = rect.height;
     const target = rl.loadRenderTexture(rl.cast(i32, width), rl.cast(i32, height));
     defer rl.unloadTexture(target.texture);
 
     rl.beginTextureMode(target);
     for (0.., self.frames.items) |idx, frame| {
-        const x_offset = idx * rl.cast(usize, self.size_in_pixels.x);
+        const x_offset = idx * rl.cast(usize, rect.width);
         var iter = frame.pixels.iterator();
         while (iter.next()) |kv| {
             const pos = kv.key_ptr.*;
@@ -111,10 +119,10 @@ pub fn load(self: *Self, path: []const u8) !void {
     const image = rl.loadImage(cpath);
     defer rl.unloadImage(image);
     self.clear();
-    self.size_in_pixels = .{
-        .x = rl.cast(f32, image.width),
-        .y = rl.cast(f32, image.height),
-    };
+    // self.size_in_pixels = .{
+    //     .x = rl.cast(f32, image.width),
+    //     .y = rl.cast(f32, image.height),
+    // };
     const frame = self.getCurrentFramePtr() orelse @panic("Cannot load into empty frame");
     for (0..rl.cast(usize, image.height)) |y| {
         for (0..@intCast(image.width)) |x| {
@@ -128,13 +136,14 @@ pub fn load(self: *Self, path: []const u8) !void {
 
 pub fn draw(self: *const Self) void {
     rl.drawRectangleRec(
-        self.bounding_box.as(f32),
+        self.getVisiableRect(f32),
         rl.Color.ray_white,
     );
+    const top_left = self.bounding_box.getPos();
     const frame = self.getCurrentFrameConstPtr() orelse return;
     var iter = frame.pixels.iterator();
     while (iter.next()) |kv| {
-        const pos = kv.key_ptr.*.mul(self.pixels_size).add(self.bounding_box.getPos());
+        const pos = kv.key_ptr.*.mul(self.pixels_size).add(top_left);
         const color = kv.value_ptr.*;
         const rect = rl.Rectangle(i32).from2vec2(pos, .{ .x = self.pixels_size, .y = self.pixels_size });
         rl.drawRectangleRec(rect.as(f32), color);

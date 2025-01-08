@@ -308,7 +308,7 @@ fn initButtons(self: *Self) !void {
         fn f(w: *Button) event.Event {
             return w.event;
         }
-    }.f, .testing, Asset.loadTexture(Asset.BUCKET_TOOL_ICON));
+    }.f, .bucket, Asset.loadTexture(Asset.BUCKET_TOOL_ICON));
     try self.add_button("grid", struct {
         fn f(w: *Button) event.Event {
             return w.event;
