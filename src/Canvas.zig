@@ -243,7 +243,7 @@ fn drawGrid(self: *const Self) void {
     }
 }
 
-pub fn draw(self: *const Self) void {
+pub fn draw(self: *const Self, mouse: ?rl.Vector2(f32)) void {
     rl.drawRectangleRec(
         self.getVisiableRect(f32),
         rl.Color.ray_white,
@@ -258,11 +258,19 @@ pub fn draw(self: *const Self) void {
         rl.drawRectangleRec(rect.as(f32), color);
     }
 
+    // Draw overlay
     for (self.overlay_pixels.items) |pos| {
         rl.drawRectangleRec(
             rl.Rectangle(i32).from2vec2(pos.mul(self.pixels_size), .{ .x = self.pixels_size, .y = self.pixels_size }).as(f32),
             rl.Color.gray,
         );
+    }
+
+    // Draw cursor
+    if (mouse) |m| {
+        const cursor = self.normalizeCursor(m.as(i32));
+        const rect = rl.Rectangle(i32).from2vec2(cursor.mul(self.pixels_size), .{ .x = self.pixels_size, .y = self.pixels_size });
+        rl.drawRectangleLines(rect.x, rect.y, rect.width, rect.height, rl.Color.gray);
     }
 
     if (self.display_grid) self.drawGrid();

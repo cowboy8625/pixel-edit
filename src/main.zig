@@ -18,7 +18,7 @@ pub fn main() !void {
     rl.setConfigFlags(.{
         .window_resizable = true,
     });
-    rl.initWindow(800, 600, "Pixel Edit");
+    rl.initWindow(0, 0, "Pixel Edit");
     defer rl.closeWindow();
 
     var canvas = try Canvas.init(
@@ -47,7 +47,7 @@ pub fn main() !void {
     var color_wheel = ColorWheel.init(.{ .x = 200, .y = 200, .width = 200, .height = 200 });
 
     var camera = rl.Camera2D{
-        .offset = .{ .x = 0, .y = 0 },
+        .offset = rl.Vector2(i32).init(rl.getScreenWidth(), rl.getScreenHeight()).div(2).sub(canvas.getVisiableRect(i32).getSize().div(2)).asRl(),
         .target = .{ .x = 0, .y = 0 },
         .rotation = 0,
         .zoom = 1,
@@ -72,6 +72,20 @@ pub fn main() !void {
             camera.target = camera.target.add(delta);
         }
         updateCameraZoom(&camera, mouse, world_mouse);
+
+        if (rl.isKeyPressed(.key_f)) {
+            state = .fill;
+        } else if (rl.isKeyPressed(.key_b)) {
+            state = .draw;
+        } else if (rl.isKeyPressed(.key_l)) {
+            state = .line;
+        } else if (rl.isKeyPressed(.key_e)) {
+            state = .erase;
+        } else if (rl.isKeyPressed(.key_c) and color_wheel.state == .hidden) {
+            try events.append(.open_color_wheel);
+        } else if (rl.isKeyPressed(.key_c) and color_wheel.state == .visible) {
+            try events.append(.close_color_wheel);
+        }
 
         for (events.items) |e| {
             switch (e) {
@@ -172,7 +186,8 @@ pub fn main() !void {
         defer rl.endDrawing();
 
         rl.beginMode2D(camera);
-        canvas.draw();
+        const m = if (isMouseOverCanvas) world_mouse else null;
+        canvas.draw(m);
         rl.endMode2D();
 
         color_wheel.draw();
