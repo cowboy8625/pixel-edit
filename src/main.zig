@@ -103,6 +103,7 @@ pub fn main() !void {
                 .rotate_right => canvas.rotateRight(),
                 .flip_vertical => canvas.flipVertical(),
                 .flip_horizontal => canvas.flipHorizontal(),
+                .display_canvas_grid => canvas.toggleGrid(),
             }
         }
 

@@ -92,6 +92,7 @@ pub fn drawTextureEx(texture: Texture2D, position: Vector2(f32), rotation: f32, 
 
 pub const drawCircle = rl.drawCircle;
 
+pub const drawLine = rl.drawLine;
 pub fn drawLineV(pos1: Vector2(f32), pos2: Vector2(f32), color: Color) void {
     rl.drawLineV(pos1.as(rl.Vector2), pos2.as(rl.Vector2), color);
 }

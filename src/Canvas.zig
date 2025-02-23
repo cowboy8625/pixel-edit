@@ -7,6 +7,7 @@ bounding_box: rl.Rectangle(i32),
 frames: std.ArrayList(Frame),
 current_frame: usize,
 pixels_size: i32,
+display_grid: bool = false,
 
 pub fn init(allocator: std.mem.Allocator, bounding_box: rl.Rectangle(i32), pixels_size: i32) !Self {
     var self = .{
@@ -182,6 +183,25 @@ pub fn load(self: *Self, path: []const u8) !void {
     }
 }
 
+pub fn toggleGrid(self: *Self) void {
+    self.display_grid = !self.display_grid;
+}
+
+fn drawGrid(self: *const Self) void {
+    const rect = self.bounding_box.as(i32);
+    const cells: rl.Vector2(i32) = .{ .x = self.pixels_size, .y = self.pixels_size };
+    const px_width = rect.width * cells.x;
+    const px_height = rect.height * cells.y;
+    for (0..(rl.cast(usize, rect.width) + 1)) |x| {
+        const ix = cells.x * rl.cast(i32, x);
+        rl.drawLine(ix, 0, ix, px_height, rl.Color.gray);
+    }
+    for (0..(rl.cast(usize, rect.height) + 1)) |y| {
+        const iy = cells.y * rl.cast(i32, y);
+        rl.drawLine(0, iy, px_width, iy, rl.Color.gray);
+    }
+}
+
 pub fn draw(self: *const Self) void {
     rl.drawRectangleRec(
         self.getVisiableRect(f32),
@@ -196,6 +216,7 @@ pub fn draw(self: *const Self) void {
         const rect = rl.Rectangle(i32).from2vec2(pos, .{ .x = self.pixels_size, .y = self.pixels_size });
         rl.drawRectangleRec(rect.as(f32), color);
     }
+    if (self.display_grid) self.drawGrid();
 }
 
 fn rotateIndexClockwise(comptime T: type, rect: rl.Rectangle(T)) rl.Vector2(T) {

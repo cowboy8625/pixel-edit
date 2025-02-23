@@ -22,4 +22,5 @@ pub const Event = union(enum) {
     rotate_right: void,
     flip_horizontal: void,
     flip_vertical: void,
+    display_canvas_grid: void,
 };

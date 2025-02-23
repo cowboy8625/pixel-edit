@@ -313,7 +313,7 @@ fn initButtons(self: *Self) !void {
         fn f(w: *Button) event.Event {
             return w.event;
         }
-    }.f, .testing, Asset.loadTexture(Asset.GRID_ICON));
+    }.f, .display_canvas_grid, Asset.loadTexture(Asset.GRID_ICON));
     try self.add_button("color picker", struct {
         fn f(w: *Button) event.Event {
             return w.event;
