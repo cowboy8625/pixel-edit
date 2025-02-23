@@ -25,3 +25,7 @@ pub fn insert(self: *Self, pixel: rl.Vector2(i32), color: rl.Color) !bool {
 pub fn remove(self: *Self, pixel: rl.Vector2(i32)) bool {
     return self.pixels.remove(pixel);
 }
+
+pub fn iterator(self: *const Self) std.AutoHashMap(rl.Vector2(i32), rl.Color).Iterator {
+    return self.pixels.iterator();
+}

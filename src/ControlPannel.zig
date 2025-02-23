@@ -326,10 +326,20 @@ fn initButtons(self: *Self) !void {
         }
     }.f, .open_color_wheel, Asset.loadTexture(Asset.COLOR_WHEEL_ICON));
     try self.add_button("rotate left", struct {
+        fn f(e: *Button) event.Event {
+            return e.event;
+        }
+    }.f, .rotate_left, Asset.loadTexture(Asset.ROTATE_LEFT_ICON));
+    try self.add_button("rotate right", struct {
+        fn f(e: *Button) event.Event {
+            return e.event;
+        }
+    }.f, .rotate_right, Asset.loadTexture(Asset.ROTATE_RIGHT_ICON));
+    try self.add_button("previous frame", struct {
         fn f(w: *Button) event.Event {
             return w.event;
         }
-    }.f, .testing, Asset.loadTexture(Asset.ROTATE_LEFT_ICON));
+    }.f, .testing, Asset.loadTexture(Asset.LEFT_ARROW_ICON));
     try self.add_button("play animation", struct {
         fn f(w: *Button) event.Event {
             return w.event;
@@ -340,16 +350,6 @@ fn initButtons(self: *Self) !void {
             return w.event;
         }
     }.f, .testing, Asset.loadTexture(Asset.RIGHT_ARROW_ICON));
-    try self.add_button("previous frame", struct {
-        fn f(w: *Button) event.Event {
-            return w.event;
-        }
-    }.f, .testing, Asset.loadTexture(Asset.LEFT_ARROW_ICON));
-    try self.add_button("rotate right", struct {
-        fn f(w: *Button) event.Event {
-            return w.event;
-        }
-    }.f, .testing, Asset.loadTexture(Asset.ROTATE_RIGHT_ICON));
     try self.add_button("draw line tool", struct {
         fn f(w: *Button) event.Event {
             return w.event;

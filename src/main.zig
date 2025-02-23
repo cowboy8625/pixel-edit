@@ -99,6 +99,8 @@ pub fn main() !void {
                     const file_path = try nfd.openFileDialog(null, null);
                     if (file_path) |path| try canvas.load(path);
                 },
+                .rotate_left => canvas.rotateLeft(),
+                .rotate_right => canvas.rotateRight(),
             }
         }
 

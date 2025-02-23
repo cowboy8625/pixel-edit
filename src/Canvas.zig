@@ -90,6 +90,54 @@ pub fn clear(self: *Self) void {
     frame.?.pixels.clearRetainingCapacity();
 }
 
+pub fn rotateLeft(self: *Self) void {
+    var frame = self.getCurrentFramePtr() orelse @panic("Cannot rotate empty frame");
+    var iter = frame.iterator();
+    while (iter.next()) |kv| {
+        const pos = kv.key_ptr.*;
+        const size = self.pixels_size;
+        const rect = rl.Rectangle(i32).init(pos.x, pos.y, size, size);
+        const new_pos = rotateIndexCounterClockwise(i32, rect);
+        kv.key_ptr.* = new_pos;
+    }
+}
+
+pub fn rotateRight(self: *Self) void {
+    var frame = self.getCurrentFramePtr() orelse @panic("Cannot rotate empty frame");
+    var iter = frame.iterator();
+    while (iter.next()) |kv| {
+        const pos = kv.key_ptr.*;
+        const size = self.pixels_size;
+        const rect = rl.Rectangle(i32).init(pos.x, pos.y, size, size);
+        const new_pos = rotateIndexClockwise(i32, rect);
+        kv.key_ptr.* = new_pos;
+    }
+}
+
+pub fn flipHorizontal(self: *Self) void {
+    var frame = self.getCurrentFramePtr();
+    var iter = frame.iterator();
+    while (iter.next()) |kv| {
+        const pos = kv.key_ptr.*;
+        const size = self.pixels_size;
+        const rect = rl.Rectangle(i32).init(pos.x, pos.y, size, size);
+        const new_pos = flipPointHorizontal(i32, rect);
+        kv.key_ptr.* = new_pos;
+    }
+}
+
+pub fn flipVertical(self: *Self) void {
+    var frame = self.getCurrentFramePtr();
+    var iter = frame.iterator();
+    while (iter.next()) |kv| {
+        const pos = kv.key_ptr.*;
+        const size = self.pixels_size;
+        const rect = rl.Rectangle(i32).init(pos.x, pos.y, size, size);
+        const new_pos = flipPointVertical(i32, rect);
+        kv.key_ptr.* = new_pos;
+    }
+}
+
 pub fn save(self: *Self, path: []const u8) void {
     const rect = self.bounding_box.as(f32);
     const width = rect.width * rl.cast(f32, self.frames.items.len);
@@ -148,4 +196,46 @@ pub fn draw(self: *const Self) void {
         const rect = rl.Rectangle(i32).from2vec2(pos, .{ .x = self.pixels_size, .y = self.pixels_size });
         rl.drawRectangleRec(rect.as(f32), color);
     }
+}
+
+fn rotateIndexClockwise(comptime T: type, rect: rl.Rectangle(T)) rl.Vector2(T) {
+    const new_y = rect.x;
+    const new_x = rect.height - rect.y - 1;
+    const index = new_y * rect.height + new_x;
+    return .{
+        .x = @mod(index, rect.width),
+        .y = @divFloor(index, rect.height),
+    };
+}
+
+fn rotateIndexCounterClockwise(comptime T: type, rect: rl.Rectangle(T)) rl.Vector2(T) {
+    const new_x = rect.y;
+    const new_y = rect.height - rect.x - 1;
+    const index = new_y * rect.width + new_x;
+    return .{
+        .x = @mod(index, rect.width),
+        .y = @divFloor(index, rect.height),
+    };
+}
+
+fn flipPointHorizontal(comptime T: type, rect: rl.Rectangle(T)) rl.Vector2(T) {
+    const new_x = rect.width - rect.x - 1;
+    const new_y = rect.y;
+    const index = new_y * rect.width + new_x;
+
+    return .{
+        .x = @mod(index, rect.width),
+        .y = @divFloor(index, rect.height),
+    };
+}
+
+fn flipPointVertical(comptime T: type, rect: rl.Rectangle(T)) rl.Vector2(T) {
+    const new_x = rect.x;
+    const new_y = rect.height - rect.y - 1;
+    const index = new_y * rect.width + new_x;
+
+    return .{
+        .x = @mod(index, rect.width),
+        .y = @divFloor(index, rect.height),
+    };
 }
