@@ -379,8 +379,8 @@ fn initButtons(self: *Self) !void {
 }
 
 fn initInputs(self: *Self, canvas_size: rl.Vector2(i32)) !void {
-    try self.add_input("Width", .{ .clicked = .width_input }, canvas_size.x);
-    try self.add_input("Height", .{ .clicked = .height_input }, canvas_size.y);
+    try self.add_input("Width", .{ .clicked = .width_input }, canvas_size.x + 1);
+    try self.add_input("Height", .{ .clicked = .height_input }, canvas_size.y + 1);
 }
 
 // fn numberStringLen(value: i32) usize {

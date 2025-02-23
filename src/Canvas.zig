@@ -36,8 +36,8 @@ pub fn getVisiableRect(self: *const Self, comptime T: type) rl.Rectangle(T) {
     const rect: rl.Rectangle(i32) = .{
         .x = self.bounding_box.x,
         .y = self.bounding_box.y,
-        .width = (self.bounding_box.width) * self.pixels_size,
-        .height = (self.bounding_box.height) * self.pixels_size,
+        .width = (self.bounding_box.width + 1) * self.pixels_size,
+        .height = (self.bounding_box.height + 1) * self.pixels_size,
     };
     return rect.as(T);
 }
@@ -53,6 +53,7 @@ pub fn getCurrentFrameConstPtr(self: *const Self) ?*const Frame {
 }
 
 pub fn setWidth(self: *Self, width: i32) void {
+    if (width == 0) return;
     self.bounding_box.width = width;
     for (self.frames.items) |*frame| {
         frame.bounding_box.width = width;
@@ -60,6 +61,7 @@ pub fn setWidth(self: *Self, width: i32) void {
 }
 
 pub fn setHeight(self: *Self, height: i32) void {
+    if (height == 0) return;
     self.bounding_box.height = height;
     for (self.frames.items) |*frame| {
         frame.bounding_box.height = height;

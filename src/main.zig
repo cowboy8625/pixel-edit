@@ -26,8 +26,8 @@ pub fn main() !void {
         .{
             .x = 0,
             .y = 0,
-            .width = 16,
-            .height = 16,
+            .width = 15,
+            .height = 15,
         },
         16,
     );
