@@ -116,9 +116,17 @@ pub fn main() !void {
 
         events.clearRetainingCapacity();
 
+        const isControlDown = rl.isKeyDown(.key_left_control) or rl.isKeyDown(.key_right_control);
+
         switch (state) {
-            .draw => if (rl.isMouseButtonDown(.mouse_button_left)) {
+            .draw => if (rl.isMouseButtonDown(.mouse_button_left) and !isControlDown) {
                 _ = try canvas.insert(world_mouse.as(i32), color_wheel.getSelectedColor());
+            } else if (isControlDown and rl.isMouseButtonReleased(.mouse_button_left) and isMouseOverCanvas) {
+                try canvas.applyOverlay(color_wheel.getSelectedColor());
+            } else if (isControlDown and isMouseOverCanvas) {
+                try canvas.applyLineToOverlay(world_mouse.as(i32));
+            } else {
+                canvas.clearOverlay();
             },
             .line => if (rl.isMouseButtonDown(.mouse_button_left) and isMouseOverCanvas) {
                 try canvas.applyLineToOverlay(world_mouse.as(i32));
