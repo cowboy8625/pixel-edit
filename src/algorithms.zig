@@ -59,7 +59,7 @@ fn compareColors(c1: rl.Color, c2: rl.Color) bool {
     return c1.r == c2.r and c1.g == c2.g and c1.b == c2.b and c1.a == c2.a;
 }
 
-pub fn bresenhamLine(xx1: i32, yy1: i32, x2: i32, y2: i32, out: *std.ArrayList(rl.Vector2)) !void {
+pub fn bresenhamLine(comptime T: type, xx1: i32, yy1: i32, x2: i32, y2: i32, out: *std.ArrayList(rl.Vector2(T))) !void {
     var x1 = xx1;
     var y1 = yy1;
     const dx: i32 = rl.cast(i32, @abs(x2 - x1));
@@ -70,7 +70,7 @@ pub fn bresenhamLine(xx1: i32, yy1: i32, x2: i32, y2: i32, out: *std.ArrayList(r
     var err: i32 = dx - dy;
 
     while (true) {
-        try out.*.append(.{ .x = rl.cast(f32, x1), .y = rl.cast(f32, y1) });
+        try out.*.append(.{ .x = x1, .y = y1 });
 
         if (x1 == x2 and y1 == y2) break;
 

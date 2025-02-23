@@ -170,6 +170,7 @@ pub fn getMouseWheelMoveV() Vector2(f32) {
 
 pub const isMouseButtonPressed = rl.isMouseButtonPressed;
 pub const isMouseButtonDown = rl.isMouseButtonDown;
+pub const isMouseButtonReleased = rl.isMouseButtonReleased;
 
 pub fn centerScreen() Vector2(f32) {
     return .{ .x = cast(f32, rl.getScreenWidth()) / 2, .y = cast(f32, rl.getScreenHeight()) / 2 };

@@ -339,22 +339,23 @@ fn initButtons(self: *Self) !void {
         fn f(w: *Button) event.Event {
             return w.event;
         }
-    }.f, .testing, Asset.loadTexture(Asset.LEFT_ARROW_ICON));
+    }.f, .previous_frame, Asset.loadTexture(Asset.LEFT_ARROW_ICON));
     try self.add_button("play animation", struct {
         fn f(w: *Button) event.Event {
-            return w.event;
+            const new_event: event.Event = if (w.event == event.Event.stop_animation) .play_animation else .stop_animation;
+            return new_event;
         }
-    }.f, .testing, Asset.loadTexture(Asset.PLAY_ICON));
+    }.f, .play_animation, Asset.loadTexture(Asset.PLAY_ICON));
     try self.add_button("next frame", struct {
         fn f(w: *Button) event.Event {
             return w.event;
         }
-    }.f, .testing, Asset.loadTexture(Asset.RIGHT_ARROW_ICON));
+    }.f, .next_frame, Asset.loadTexture(Asset.RIGHT_ARROW_ICON));
     try self.add_button("draw line tool", struct {
         fn f(w: *Button) event.Event {
             return w.event;
         }
-    }.f, .testing, Asset.loadTexture(Asset.LINE_TOOL_ICON));
+    }.f, .draw_line, Asset.loadTexture(Asset.LINE_TOOL_ICON));
     try self.add_button("flip vertical", struct {
         fn f(w: *Button) event.Event {
             return w.event;
@@ -369,12 +370,12 @@ fn initButtons(self: *Self) !void {
         fn f(w: *Button) event.Event {
             return w.event;
         }
-    }.f, .testing, Asset.loadTexture(Asset.FRAMES_ICON));
+    }.f, .frame_tool, Asset.loadTexture(Asset.FRAMES_ICON));
     try self.add_button("selection tool", struct {
         fn f(w: *Button) event.Event {
             return w.event;
         }
-    }.f, .testing, Asset.loadTexture(Asset.SELECTION_ICON));
+    }.f, .selection_tool, Asset.loadTexture(Asset.SELECTION_ICON));
 }
 
 fn initInputs(self: *Self, canvas_size: rl.Vector2(i32)) !void {

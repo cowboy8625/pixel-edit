@@ -61,10 +61,11 @@ pub fn main() !void {
         const world_mouse = rl.getScreenToWorld2D(mouse, camera);
         color_wheel.update(mouse, ControlPannel.getWidth(f32), control_pannel.state);
         try control_pannel.update(mouse, &events);
+        const isMouseOverCanvas = rl.checkCollisionPointRec(world_mouse, canvas.getVisiableRect(f32));
 
         if (rl.isMouseButtonDown(.mouse_button_right) and
             rl.checkCollisionPointRec(world_mouse, canvas.getVisiableRect(f32)) and
-            !(color_wheel.state == .visible and rl.checkCollisionPointRec(mouse, color_wheel.bounding_box.as(f32))))
+            !(color_wheel.state == .visible and isMouseOverCanvas))
         {
             var delta = rl.getMouseDelta();
             delta = delta.scale(-1.0 / camera.zoom);
@@ -74,10 +75,8 @@ pub fn main() !void {
 
         for (events.items) |e| {
             switch (e) {
-                .testing => {
-                    std.log.info("testing\n", .{});
-                },
                 .draw => state = .draw,
+                .draw_line => state = .line,
                 .erase => state = .erase,
                 .bucket => state = .fill,
                 .color_picker => state = .color_picker,
@@ -104,42 +103,48 @@ pub fn main() !void {
                 .flip_vertical => canvas.flipVertical(),
                 .flip_horizontal => canvas.flipHorizontal(),
                 .display_canvas_grid => canvas.toggleGrid(),
+                .play_animation => std.log.info("play_animation", .{}),
+                .stop_animation => std.log.info("stop_animation", .{}),
+                .next_frame => std.log.info("next_frame", .{}), // canvas.nextFrame(),
+                .previous_frame => std.log.info("previous_frame", .{}), // canvas.previousFrame(),
+                .new_frame => std.log.info("previous_frame", .{}), // canvas.newFrame(),
+                .delete_frame => std.log.info("delete_frame", .{}), // canvas.deleteFrame(),
+                .frame_tool => std.log.info("frame_tool", .{}),
+                .selection_tool => std.log.info("selection_tool", .{}),
             }
         }
 
         events.clearRetainingCapacity();
 
         switch (state) {
-            .draw => {
-                if (rl.isMouseButtonDown(.mouse_button_left)) {
-                    _ = try canvas.insert(world_mouse.as(i32), color_wheel.getSelectedColor());
+            .draw => if (rl.isMouseButtonDown(.mouse_button_left)) {
+                _ = try canvas.insert(world_mouse.as(i32), color_wheel.getSelectedColor());
+            },
+            .line => if (rl.isMouseButtonDown(.mouse_button_left) and isMouseOverCanvas) {
+                try canvas.applyLineToOverlay(world_mouse.as(i32));
+            } else if (rl.isMouseButtonReleased(.mouse_button_left) and isMouseOverCanvas) {
+                try canvas.applyOverlay(color_wheel.getSelectedColor());
+            } else {
+                canvas.clearOverlay();
+            },
+            .fill => if (rl.isMouseButtonPressed(.mouse_button_left)) {
+                const starting_point = world_mouse.as(i32);
+                const color = color_wheel.getSelectedColor();
+                try algorithms.floodFill(allocator, &canvas, color, starting_point);
+            },
+            .erase => if (rl.isMouseButtonDown(.mouse_button_left)) {
+                const cursor = world_mouse.as(i32).sub(canvas.bounding_box.getPos()).div(canvas.pixels_size);
+                const frame = canvas.getCurrentFramePtr() orelse @panic("No frame");
+                if (frame.bounding_box.contains(cursor)) {
+                    _ = frame.pixels.remove(cursor);
                 }
             },
-            .line => std.log.info("line\n", .{}),
-            .fill => {
-                if (rl.isMouseButtonPressed(.mouse_button_left)) {
-                    const starting_point = world_mouse.as(i32);
-                    const color = color_wheel.getSelectedColor();
-                    try algorithms.floodFill(allocator, &canvas, color, starting_point);
-                }
-            },
-            .erase => {
-                if (rl.isMouseButtonDown(.mouse_button_left)) {
-                    const cursor = world_mouse.as(i32).sub(canvas.bounding_box.getPos()).div(canvas.pixels_size);
-                    const frame = canvas.getCurrentFramePtr() orelse @panic("No frame");
-                    if (frame.bounding_box.contains(cursor)) {
-                        _ = frame.pixels.remove(cursor);
-                    }
-                }
-            },
-            .color_picker => {
-                if (rl.isMouseButtonPressed(.mouse_button_left)) {
-                    const cursor = world_mouse.as(i32).sub(canvas.bounding_box.getPos()).div(canvas.pixels_size);
-                    const frame = canvas.getCurrentFramePtr() orelse @panic("No frame");
-                    if (frame.bounding_box.contains(cursor)) {
-                        if (frame.pixels.get(cursor)) |color| {
-                            color_wheel.setColor(color);
-                        }
+            .color_picker => if (rl.isMouseButtonPressed(.mouse_button_left)) {
+                const cursor = world_mouse.as(i32).sub(canvas.bounding_box.getPos()).div(canvas.pixels_size);
+                const frame = canvas.getCurrentFramePtr() orelse @panic("No frame");
+                if (frame.bounding_box.contains(cursor)) {
+                    if (frame.pixels.get(cursor)) |color| {
+                        color_wheel.setColor(color);
                     }
                 }
             },

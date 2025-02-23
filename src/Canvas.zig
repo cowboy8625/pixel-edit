@@ -1,6 +1,7 @@
 const std = @import("std");
 const rl = @import("rl/mod.zig");
 const Frame = @import("Frame.zig");
+const algorithms = @import("algorithms.zig");
 
 const Self = @This();
 bounding_box: rl.Rectangle(i32),
@@ -8,6 +9,8 @@ frames: std.ArrayList(Frame),
 current_frame: usize,
 pixels_size: i32,
 display_grid: bool = false,
+last_cursor: rl.Vector2(i32) = .{ .x = 0, .y = 0 },
+overlay_pixels: std.ArrayList(rl.Vector2(i32)),
 
 pub fn init(allocator: std.mem.Allocator, bounding_box: rl.Rectangle(i32), pixels_size: i32) !Self {
     var self = .{
@@ -15,6 +18,7 @@ pub fn init(allocator: std.mem.Allocator, bounding_box: rl.Rectangle(i32), pixel
         .frames = std.ArrayList(Frame).init(allocator),
         .current_frame = 0,
         .pixels_size = pixels_size,
+        .overlay_pixels = std.ArrayList(rl.Vector2(i32)).init(allocator),
     };
     try self.frames.append(Frame.init(bounding_box, allocator));
     return self;
@@ -25,6 +29,7 @@ pub fn deinit(self: *Self) void {
         frame.deinit();
     }
     self.frames.deinit();
+    self.overlay_pixels.deinit();
 }
 
 pub fn getVisiableRect(self: *const Self, comptime T: type) rl.Rectangle(T) {
@@ -61,13 +66,18 @@ pub fn setHeight(self: *Self, height: i32) void {
     }
 }
 
+fn normalizeCursor(self: *const Self, world_pos: rl.Vector2(i32)) rl.Vector2(i32) {
+    return world_pos.as(i32).sub(self.bounding_box.getPos()).div(self.pixels_size);
+}
+
 pub fn insert(self: *Self, world_mouse: rl.Vector2(i32), color: rl.Color) !bool {
-    const cursor = world_mouse.as(i32).sub(self.bounding_box.getPos()).div(self.pixels_size);
+    const cursor = self.normalizeCursor(world_mouse);
     const frame = self.getCurrentFramePtr() orelse @panic("No frame");
     if (!frame.bounding_box.contains(cursor)) {
         return false;
     }
     try frame.pixels.put(cursor, color);
+    self.last_cursor = cursor;
     return true;
 }
 
@@ -89,6 +99,37 @@ pub fn clear(self: *Self) void {
         @panic("Cannot clear empty frame");
     }
     frame.?.pixels.clearRetainingCapacity();
+}
+
+pub fn applyLineToOverlay(self: *Self, endPoint: rl.Vector2(i32)) !void {
+    const end = self.normalizeCursor(endPoint);
+    const start = self.last_cursor;
+    self.overlay_pixels.clearRetainingCapacity();
+    try algorithms.bresenhamLine(
+        i32,
+        start.x,
+        start.y,
+        end.x,
+        end.y,
+        &self.overlay_pixels,
+    );
+}
+
+pub fn applyOverlay(self: *Self, color: rl.Color) !void {
+    const frame = self.getCurrentFramePtr() orelse @panic("Cannot apply overlay to empty frame");
+    for (self.overlay_pixels.items) |pixel| {
+        if (!(try frame.insert(pixel, color))) {
+            std.log.err("Failed to apply overlay pixel {any}", .{pixel});
+        }
+    }
+
+    if (self.overlay_pixels.getLastOrNull()) |last| {
+        self.last_cursor = last;
+    }
+}
+
+pub fn clearOverlay(self: *Self) void {
+    self.overlay_pixels.clearRetainingCapacity();
 }
 
 pub fn rotateLeft(self: *Self) void {
@@ -216,6 +257,14 @@ pub fn draw(self: *const Self) void {
         const rect = rl.Rectangle(i32).from2vec2(pos, .{ .x = self.pixels_size, .y = self.pixels_size });
         rl.drawRectangleRec(rect.as(f32), color);
     }
+
+    for (self.overlay_pixels.items) |pos| {
+        rl.drawRectangleRec(
+            rl.Rectangle(i32).from2vec2(pos.mul(self.pixels_size), .{ .x = self.pixels_size, .y = self.pixels_size }).as(f32),
+            rl.Color.gray,
+        );
+    }
+
     if (self.display_grid) self.drawGrid();
 }
 

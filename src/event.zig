@@ -4,8 +4,8 @@ pub const WidgetEvent = enum {
 };
 
 pub const Event = union(enum) {
-    testing: void,
     draw: void,
+    draw_line: void,
     erase: void,
     bucket: void,
     color_picker: void,
@@ -23,4 +23,12 @@ pub const Event = union(enum) {
     flip_horizontal: void,
     flip_vertical: void,
     display_canvas_grid: void,
+    play_animation: void,
+    stop_animation: void,
+    next_frame: void,
+    previous_frame: void,
+    new_frame: void,
+    delete_frame: void,
+    frame_tool: void,
+    selection_tool: void,
 };
