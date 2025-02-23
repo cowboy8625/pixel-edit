@@ -30,8 +30,8 @@ pub fn getVisiableRect(self: *const Self, comptime T: type) rl.Rectangle(T) {
     const rect: rl.Rectangle(i32) = .{
         .x = self.bounding_box.x,
         .y = self.bounding_box.y,
-        .width = (self.bounding_box.width + 1) * self.pixels_size,
-        .height = (self.bounding_box.height + 1) * self.pixels_size,
+        .width = (self.bounding_box.width) * self.pixels_size,
+        .height = (self.bounding_box.height) * self.pixels_size,
     };
     return rect.as(T);
 }
@@ -115,7 +115,7 @@ pub fn rotateRight(self: *Self) void {
 }
 
 pub fn flipHorizontal(self: *Self) void {
-    var frame = self.getCurrentFramePtr();
+    var frame = self.getCurrentFramePtr() orelse @panic("Cannot flip empty frame");
     var iter = frame.iterator();
     while (iter.next()) |kv| {
         const pos = kv.key_ptr.*;
@@ -127,7 +127,7 @@ pub fn flipHorizontal(self: *Self) void {
 }
 
 pub fn flipVertical(self: *Self) void {
-    var frame = self.getCurrentFramePtr();
+    var frame = self.getCurrentFramePtr() orelse @panic("Cannot flip empty frame");
     var iter = frame.iterator();
     while (iter.next()) |kv| {
         const pos = kv.key_ptr.*;

@@ -101,6 +101,8 @@ pub fn main() !void {
                 },
                 .rotate_left => canvas.rotateLeft(),
                 .rotate_right => canvas.rotateRight(),
+                .flip_vertical => canvas.flipVertical(),
+                .flip_horizontal => canvas.flipHorizontal(),
             }
         }
 

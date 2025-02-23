@@ -359,12 +359,12 @@ fn initButtons(self: *Self) !void {
         fn f(w: *Button) event.Event {
             return w.event;
         }
-    }.f, .testing, Asset.loadTexture(Asset.FLIP_VERTICAL_ICON));
+    }.f, .flip_vertical, Asset.loadTexture(Asset.FLIP_VERTICAL_ICON));
     try self.add_button("flip horizontal", struct {
         fn f(w: *Button) event.Event {
             return w.event;
         }
-    }.f, .testing, Asset.loadTexture(Asset.FLIP_HORIZONTAL_ICON));
+    }.f, .flip_horizontal, Asset.loadTexture(Asset.FLIP_HORIZONTAL_ICON));
     try self.add_button("frames tool", struct {
         fn f(w: *Button) event.Event {
             return w.event;

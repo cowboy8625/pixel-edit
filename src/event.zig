@@ -20,4 +20,6 @@ pub const Event = union(enum) {
     open_load_file_browser: void,
     rotate_left: void,
     rotate_right: void,
+    flip_horizontal: void,
+    flip_vertical: void,
 };
