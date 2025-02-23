@@ -11,6 +11,7 @@ pixels_size: i32,
 display_grid: bool = false,
 last_cursor: rl.Vector2(i32) = .{ .x = 0, .y = 0 },
 overlay_pixels: std.ArrayList(rl.Vector2(i32)),
+allocator: std.mem.Allocator,
 
 pub fn init(allocator: std.mem.Allocator, bounding_box: rl.Rectangle(i32), pixels_size: i32) !Self {
     var self = .{
@@ -19,6 +20,7 @@ pub fn init(allocator: std.mem.Allocator, bounding_box: rl.Rectangle(i32), pixel
         .current_frame = 0,
         .pixels_size = pixels_size,
         .overlay_pixels = std.ArrayList(rl.Vector2(i32)).init(allocator),
+        .allocator = allocator,
     };
     try self.frames.append(Frame.init(bounding_box, allocator));
     return self;
@@ -103,6 +105,26 @@ pub fn clear(self: *Self) void {
     frame.?.pixels.clearRetainingCapacity();
 }
 
+pub fn nextFrame(self: *Self) void {
+    self.current_frame = (self.current_frame + 1) % self.frames.items.len;
+}
+
+pub fn previousFrame(self: *Self) void {
+    self.current_frame = if (self.current_frame == 0) self.frames.items.len - 1 else self.current_frame - 1;
+}
+
+pub fn newFrame(self: *Self) !void {
+    self.current_frame = self.frames.items.len;
+    try self.frames.append(Frame.init(self.bounding_box, self.allocator));
+}
+
+pub fn deleteFrame(self: *Self) void {
+    if (self.frames.items.len == 1) return;
+    var old_frame = self.frames.orderedRemove(self.current_frame);
+    old_frame.deinit();
+    self.current_frame = if (self.current_frame == 0) 0 else self.current_frame - 1;
+}
+
 pub fn applyLineToOverlay(self: *Self, endPoint: rl.Vector2(i32)) !void {
     const end = self.normalizeCursor(endPoint);
     const start = self.last_cursor;
@@ -184,8 +206,8 @@ pub fn flipVertical(self: *Self) void {
 
 pub fn save(self: *Self, path: []const u8) void {
     const rect = self.bounding_box.as(f32);
-    const width = rect.width * rl.cast(f32, self.frames.items.len);
-    const height = rect.height;
+    const width = rect.width + 1 * rl.cast(f32, self.frames.items.len);
+    const height = rect.height + 1;
     const target = rl.loadRenderTexture(rl.cast(i32, width), rl.cast(i32, height));
     defer rl.unloadTexture(target.texture);
 

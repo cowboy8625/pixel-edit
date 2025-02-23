@@ -376,6 +376,16 @@ fn initButtons(self: *Self) !void {
             return w.event;
         }
     }.f, .selection_tool, Asset.loadTexture(Asset.SELECTION_ICON));
+    try self.add_button("delete current frame", struct {
+        fn f(w: *Button) event.Event {
+            return w.event;
+        }
+    }.f, .delete_frame, Asset.loadTexture(Asset.DELETE_ICON));
+    try self.add_button("create new frame", struct {
+        fn f(w: *Button) event.Event {
+            return w.event;
+        }
+    }.f, .new_frame, Asset.loadTexture(Asset.PLUS_ICON));
 }
 
 fn initInputs(self: *Self, canvas_size: rl.Vector2(i32)) !void {
