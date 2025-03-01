@@ -233,17 +233,12 @@ pub fn load(self: *Self, path: []const u8) !void {
     const image = rl.loadImage(cpath);
     defer rl.unloadImage(image);
     self.clear();
-    // self.size_in_pixels = .{
-    //     .x = rl.cast(f32, image.width),
-    //     .y = rl.cast(f32, image.height),
-    // };
     const frame = self.getCurrentFramePtr() orelse @panic("Cannot load into empty frame");
     for (0..rl.cast(usize, image.height)) |y| {
         for (0..@intCast(image.width)) |x| {
             const color = rl.getImageColor(image, rl.cast(i32, x), rl.cast(i32, y));
             const pos = rl.Vector2(usize).init(x, y).as(i32);
             try frame.pixels.put(pos, color);
-            // _ = try self.insert(pos, color);
         }
     }
 }
@@ -253,7 +248,7 @@ pub fn toggleGrid(self: *Self) void {
 }
 
 fn drawGrid(self: *const Self) void {
-    const rect = self.bounding_box.as(i32);
+    const rect = self.getVisiableRect(i32);
     const cells: rl.Vector2(i32) = .{ .x = self.pixels_size, .y = self.pixels_size };
     const px_width = rect.width * cells.x;
     const px_height = rect.height * cells.y;

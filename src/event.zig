@@ -1,6 +1,7 @@
 pub const WidgetEvent = enum {
     width_input,
     height_input,
+    frame_speed_input,
 };
 
 pub const Event = union(enum) {
@@ -14,6 +15,7 @@ pub const Event = union(enum) {
     clicked: WidgetEvent,
     open_color_wheel: void,
     close_color_wheel: void,
+    set_frame_speed: f32,
     set_canvas_width: i32,
     set_canvas_height: i32,
     open_save_file_browser: void,

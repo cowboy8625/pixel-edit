@@ -88,19 +88,26 @@ pub fn add_input(self: *Self, name: []const u8, action: event.Event, default_val
 
 pub fn updateInput(self: *Self, input_kind: event.WidgetEvent, state: *main.State, events: *std.ArrayList(event.Event)) !void {
     const idx: usize = switch (input_kind) {
-        .width_input => 0,
-        .height_input => 1,
+        .frame_speed_input => 0,
+        .width_input => 1,
+        .height_input => 2,
     };
     if (rl.isKeyPressed(.key_enter)) {
         const contents = self.inputs.items(.contents)[idx];
         const cursor = self.inputs.items(.cursor)[idx];
-        const num = std.fmt.parseInt(i32, contents[0..cursor], 10) catch |e| {
-            std.log.err("parse error: {s} {s}\n", .{ contents, @errorName(e) });
-            return;
-        };
         switch (idx) {
-            0 => try events.append(.{ .set_canvas_width = num }),
-            1 => try events.append(.{ .set_canvas_height = num }),
+            0 => try events.append(.{ .set_frame_speed = std.fmt.parseFloat(f32, contents[0..cursor]) catch |e| {
+                std.log.err("parse error: {s} {s}\n", .{ contents, @errorName(e) });
+                return;
+            } }),
+            1 => try events.append(.{ .set_canvas_width = std.fmt.parseInt(i32, contents[0..cursor], 10) catch |e| {
+                std.log.err("parse error: {s} {s}\n", .{ contents, @errorName(e) });
+                return;
+            } }),
+            2 => try events.append(.{ .set_canvas_height = std.fmt.parseInt(i32, contents[0..cursor], 10) catch |e| {
+                std.log.err("parse error: {s} {s}\n", .{ contents, @errorName(e) });
+                return;
+            } }),
             else => unreachable,
         }
         state.* = .none;
@@ -114,7 +121,7 @@ pub fn updateInput(self: *Self, input_kind: event.WidgetEvent, state: *main.Stat
     }
     const c = rl.getCharPressed();
     if (c == 0) return;
-    if (c < 48 or c > 57) return;
+    if ((c < 48 or c > 57) and c != 46) return;
     const ch: u8 = @truncate(@as(u32, @intCast(c)));
     const contents = &self.inputs.items(.contents)[idx];
     const cursor = &self.inputs.items(.cursor)[idx];
@@ -343,6 +350,7 @@ fn initButtons(self: *Self) !void {
     try self.add_button("play animation", struct {
         fn f(w: *Button) event.Event {
             const new_event: event.Event = if (w.event == event.Event.stop_animation) .play_animation else .stop_animation;
+            w.texture = if (w.event == event.Event.stop_animation) Asset.loadTexture(Asset.PLAY_ICON) else Asset.loadTexture(Asset.STOP_ICON);
             return new_event;
         }
     }.f, .play_animation, Asset.loadTexture(Asset.PLAY_ICON));
@@ -389,6 +397,7 @@ fn initButtons(self: *Self) !void {
 }
 
 fn initInputs(self: *Self, canvas_size: rl.Vector2(i32)) !void {
+    try self.add_input("Frame Speed", .{ .clicked = .frame_speed_input }, canvas_size.y + 1);
     try self.add_input("Width", .{ .clicked = .width_input }, canvas_size.x + 1);
     try self.add_input("Height", .{ .clicked = .height_input }, canvas_size.y + 1);
 }

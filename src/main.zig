@@ -43,6 +43,9 @@ pub fn main() !void {
     defer events.deinit();
 
     var state: State = .none;
+    var annimation = Annimation{
+        .speed = 0.5,
+    };
 
     var color_wheel = ColorWheel.init(.{ .x = 200, .y = 200, .width = 200, .height = 200 });
 
@@ -57,6 +60,7 @@ pub fn main() !void {
 
     rl.setTargetFPS(60);
     while (!rl.windowShouldClose()) {
+        const delta_time = rl.getFrameTime();
         const mouse = rl.getMousePosition();
         const world_mouse = rl.getScreenToWorld2D(mouse, camera);
         color_wheel.update(mouse, ControlPannel.getWidth(f32), control_pannel.state);
@@ -99,9 +103,11 @@ pub fn main() !void {
                 .clicked => |we| switch (we) {
                     .width_input => state = .widget_width_input,
                     .height_input => state = .widget_height_input,
+                    .frame_speed_input => state = .widget_frame_speed_input,
                 },
                 .open_color_wheel => color_wheel.show(),
                 .close_color_wheel => color_wheel.hide(),
+                .set_frame_speed => |speed| annimation.speed = speed,
                 .set_canvas_width => |width| canvas.setWidth(width),
                 .set_canvas_height => |height| canvas.setHeight(height),
                 .open_save_file_browser => {
@@ -117,8 +123,8 @@ pub fn main() !void {
                 .flip_vertical => canvas.flipVertical(),
                 .flip_horizontal => canvas.flipHorizontal(),
                 .display_canvas_grid => canvas.toggleGrid(),
-                .play_animation => std.log.info("play_animation", .{}),
-                .stop_animation => std.log.info("stop_animation", .{}),
+                .play_animation => annimation.state = .play,
+                .stop_animation => annimation.state = .stop,
                 .next_frame => canvas.nextFrame(),
                 .previous_frame => canvas.previousFrame(),
                 .new_frame => try canvas.newFrame(),
@@ -177,8 +183,13 @@ pub fn main() !void {
             .widget_height_input => {
                 try control_pannel.updateInput(.height_input, &state, &events);
             },
+            .widget_frame_speed_input => {
+                try control_pannel.updateInput(.frame_speed_input, &state, &events);
+            },
             .none => {},
         }
+
+        annimation.nextFrame(&canvas, delta_time);
 
         // -------- DRAW --------
         rl.beginDrawing();
@@ -214,7 +225,28 @@ pub const State = enum {
     select,
     widget_width_input,
     widget_height_input,
+    widget_frame_speed_input,
     none,
+};
+
+pub const Annimation = struct {
+    const Self = @This();
+    const State = enum {
+        play,
+        stop,
+    };
+
+    state: Self.State = .stop,
+    speed: f32 = 2.0,
+    frame_length: f32 = 0.0,
+
+    pub fn nextFrame(self: *Self, canvas: *Canvas, delta: f32) void {
+        self.frame_length += delta;
+        if (self.state == .play and self.frame_length >= self.speed) {
+            canvas.nextFrame();
+            self.frame_length = 0.0;
+        }
+    }
 };
 
 fn updateCameraZoom(camera: *rl.Camera2D, pos: rl.Vector2(f32), worldMousePosition: rl.Vector2(f32)) void {
