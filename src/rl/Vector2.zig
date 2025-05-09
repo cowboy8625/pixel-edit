@@ -43,6 +43,14 @@ pub fn Vector2(comptime T: type) type {
             }
         }
 
+        pub fn addX(self: Self, other: T) Self {
+            return .{ .x = self.x + other, .y = self.y };
+        }
+
+        pub fn addY(self: Self, other: T) Self {
+            return .{ .x = self.x, .y = self.y + other };
+        }
+
         pub fn sub(self: Self, other: anytype) Self {
             switch (@TypeOf(other)) {
                 Self => {

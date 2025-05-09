@@ -13,27 +13,25 @@ zig build run
 ```
 
 ### TODO
-- [ ] Animations - display each frame as the exported image would be displayed
+
+- [ ] Remove ESC from killing the app
+- [ ] Fix Grid drawing
+- [ ] Undo/Redo
+- [ ] Selection Tool - should be able to grab and move the selected area
 
 #### UI
-- [ ] World UI scaling with camera
-- [ ] Ui implementation for buttons on a grid.
-- [ ] some how highlight the selected tool in use
 
-#### File Manager
-- [ ] Back button to move up a folder `../` at the top of the list
-- [ ] sort list to have folders at the top and files at the bottom
-- [ ] Create Folder button
-- [ ] If file name is to long chop it and add ...
+- [ ] World UI scaling with camera
+- [ ] highlight the selected tool in use
 
 #### Text Input
+
 - [ ] TextInput add cursor movement with arrow keys
 - [ ] move left and right in text input with cursor
 
 #### TOOLS
+
+- [ ] Resizeable Brush
 - [ ] Brush size
 - [ ] custom brushs
-- [ ] custom and saveable color palette  (save to a json file)
-
-#### WIDNOWS
-file manager doesnt work
+- [ ] custom and saveable color palette (save to a json file)

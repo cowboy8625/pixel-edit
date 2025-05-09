@@ -9,6 +9,7 @@ frames: std.ArrayList(Frame),
 current_frame: usize,
 pixels_size: i32,
 display_grid: bool = false,
+frame_tool: bool = false,
 last_cursor: rl.Vector2(i32) = .{ .x = 0, .y = 0 },
 overlay_pixels: std.ArrayList(rl.Vector2(i32)),
 allocator: std.mem.Allocator,
@@ -34,7 +35,7 @@ pub fn deinit(self: *Self) void {
     self.overlay_pixels.deinit();
 }
 
-pub fn getVisiableRect(self: *const Self, comptime T: type) rl.Rectangle(T) {
+pub fn getVisibleRect(self: *const Self, comptime T: type) rl.Rectangle(T) {
     const rect: rl.Rectangle(i32) = .{
         .x = self.bounding_box.x,
         .y = self.bounding_box.y,
@@ -125,6 +126,10 @@ pub fn deleteFrame(self: *Self) void {
     self.current_frame = if (self.current_frame == 0) 0 else self.current_frame - 1;
 }
 
+pub fn toggleFrameTool(self: *Self) void {
+    self.frame_tool = !self.frame_tool;
+}
+
 pub fn applyLineToOverlay(self: *Self, endPoint: rl.Vector2(i32)) !void {
     const end = self.normalizeCursor(endPoint);
     const start = self.last_cursor;
@@ -206,7 +211,7 @@ pub fn flipVertical(self: *Self) void {
 
 pub fn save(self: *Self, path: []const u8) void {
     const rect = self.bounding_box.as(f32);
-    const width = rect.width + 1 * rl.cast(f32, self.frames.items.len);
+    const width = (rect.width + 1) * rl.cast(f32, self.frames.items.len);
     const height = rect.height + 1;
     const target = rl.loadRenderTexture(rl.cast(i32, width), rl.cast(i32, height));
     defer rl.unloadTexture(target.texture);
@@ -232,13 +237,36 @@ pub fn load(self: *Self, path: []const u8) !void {
     const cpath: [*c]const u8 = @ptrCast(path);
     const image = rl.loadImage(cpath);
     defer rl.unloadImage(image);
+
+    const frame_rect = self.bounding_box.as(usize);
+    const frame_width: usize = frame_rect.width + 1;
+    // const frame_height: usize = frame_rect.height + 1;
+    const total_width = rl.cast(usize, image.width);
+    // const total_height = rl.cast(usize, image.height);
+
+    const num_frames = total_width / frame_width;
+    // if (total_width % frame_width != 0 or total_height != frame_height) {
+    //     std.log.err("Invalid frame dimensions {d}x{d} != {d}x{d}", .{ frame_width, frame_height, total_width, total_height });
+    //     return error.InvalidFrameDimensions;
+    // }
+
     self.clear();
-    const frame = self.getCurrentFramePtr() orelse @panic("Cannot load into empty frame");
-    for (0..rl.cast(usize, image.height)) |y| {
-        for (0..@intCast(image.width)) |x| {
-            const color = rl.getImageColor(image, rl.cast(i32, x), rl.cast(i32, y));
-            const pos = rl.Vector2(usize).init(x, y).as(i32);
-            try frame.pixels.put(pos, color);
+
+    for (0..num_frames) |frame_index| {
+        var frame = self.getCurrentFramePtr() orelse @panic("Cannot load into empty frame");
+        for (0..frame_rect.height + 1) |y| {
+            for (0..frame_rect.width + 1) |x| {
+                const global_x = frame_index * (frame_rect.width + x);
+                const color = rl.getImageColor(image, rl.cast(i32, global_x), rl.cast(i32, y));
+                const pos = rl.Vector2(usize).init(x, y).as(i32);
+                try frame.pixels.put(pos, color);
+                if (x == 16 and frame_index == 0) {
+                    std.log.info("Loading frame {any}, {any}", .{ pos, color });
+                }
+            }
+        }
+        if (frame_index + 1 != num_frames) {
+            try self.newFrame();
         }
     }
 }
@@ -248,7 +276,7 @@ pub fn toggleGrid(self: *Self) void {
 }
 
 fn drawGrid(self: *const Self) void {
-    const rect = self.getVisiableRect(i32);
+    const rect = self.getVisibleRect(i32);
     const cells: rl.Vector2(i32) = .{ .x = self.pixels_size, .y = self.pixels_size };
     const px_width = rect.width * cells.x;
     const px_height = rect.height * cells.y;
@@ -262,19 +290,63 @@ fn drawGrid(self: *const Self) void {
     }
 }
 
+// TODO: to make this more efficient, we can draw to a
+// texture and then have a queue of pixels to add or
+// remove from the texture and only draw the texture
 pub fn draw(self: *const Self, mouse: ?rl.Vector2(f32)) void {
-    rl.drawRectangleRec(
-        self.getVisiableRect(f32),
-        rl.Color.ray_white,
-    );
     const top_left = self.bounding_box.getPos();
-    const frame = self.getCurrentFrameConstPtr() orelse return;
-    var iter = frame.pixels.iterator();
-    while (iter.next()) |kv| {
-        const pos = kv.key_ptr.*.mul(self.pixels_size).add(top_left);
-        const color = kv.value_ptr.*;
-        const rect = rl.Rectangle(i32).from2vec2(pos, .{ .x = self.pixels_size, .y = self.pixels_size });
-        rl.drawRectangleRec(rect.as(f32), color);
+    if (self.frame_tool) {
+        const current_frame = -rl.cast(i32, self.current_frame);
+        const padding = self.pixels_size * 3;
+        const bounding_box = self.frames.items[0].bounding_box;
+        var offset_x: i32 = current_frame * (bounding_box.width * self.pixels_size + padding);
+        var canvas_rect =
+            rl.Rectangle(i32).init(
+            bounding_box.x + offset_x,
+            bounding_box.y,
+            (bounding_box.width + 1) * self.pixels_size,
+            (bounding_box.height + 1) * self.pixels_size,
+        );
+
+        for (0.., self.frames.items) |i, frame| {
+            canvas_rect.x = bounding_box.x + offset_x;
+
+            rl.drawRectangleRec(
+                canvas_rect.as(f32),
+                rl.Color.ray_white,
+            );
+
+            var iter = frame.pixels.iterator();
+            while (iter.next()) |kv| {
+                const pos = kv.key_ptr.*.mul(self.pixels_size).add(top_left).addX(offset_x);
+                const color = kv.value_ptr.*;
+                const rect = rl.Rectangle(i32).from2vec2(pos, .{ .x = self.pixels_size, .y = self.pixels_size });
+                rl.drawRectangleRec(rect.as(f32), color);
+            }
+
+            if (self.current_frame == i) {
+                rl.drawRectangleLinesEx(
+                    canvas_rect.as(f32),
+                    1,
+                    rl.Color.green,
+                );
+            }
+
+            offset_x += frame.bounding_box.width * self.pixels_size + padding;
+        }
+    } else {
+        rl.drawRectangleRec(
+            self.getVisibleRect(f32),
+            rl.Color.ray_white,
+        );
+        const frame = self.getCurrentFrameConstPtr() orelse return;
+        var iter = frame.pixels.iterator();
+        while (iter.next()) |kv| {
+            const pos = kv.key_ptr.*.mul(self.pixels_size).add(top_left);
+            const color = kv.value_ptr.*;
+            const rect = rl.Rectangle(i32).from2vec2(pos, .{ .x = self.pixels_size, .y = self.pixels_size });
+            rl.drawRectangleRec(rect.as(f32), color);
+        }
     }
 
     // Draw overlay

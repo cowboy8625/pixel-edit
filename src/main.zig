@@ -50,7 +50,7 @@ pub fn main() !void {
     var color_wheel = ColorWheel.init(.{ .x = 200, .y = 200, .width = 200, .height = 200 });
 
     var camera = rl.Camera2D{
-        .offset = rl.Vector2(i32).init(rl.getScreenWidth(), rl.getScreenHeight()).div(2).sub(canvas.getVisiableRect(i32).getSize().div(2)).asRl(),
+        .offset = rl.Vector2(i32).init(rl.getScreenWidth(), rl.getScreenHeight()).div(2).sub(canvas.getVisibleRect(i32).getSize().div(2)).asRl(),
         .target = .{ .x = 0, .y = 0 },
         .rotation = 0,
         .zoom = 1,
@@ -65,10 +65,10 @@ pub fn main() !void {
         const world_mouse = rl.getScreenToWorld2D(mouse, camera);
         color_wheel.update(mouse, ControlPannel.getWidth(f32), control_pannel.state);
         try control_pannel.update(mouse, &events);
-        const isMouseOverCanvas = rl.checkCollisionPointRec(world_mouse, canvas.getVisiableRect(f32));
+        const isMouseOverCanvas = rl.checkCollisionPointRec(world_mouse, canvas.getVisibleRect(f32));
 
         if (rl.isMouseButtonDown(.mouse_button_right) and
-            rl.checkCollisionPointRec(world_mouse, canvas.getVisiableRect(f32)) and
+            rl.checkCollisionPointRec(world_mouse, canvas.getVisibleRect(f32)) and
             !(color_wheel.state == .visible and isMouseOverCanvas))
         {
             var delta = rl.getMouseDelta();
@@ -129,7 +129,7 @@ pub fn main() !void {
                 .previous_frame => canvas.previousFrame(),
                 .new_frame => try canvas.newFrame(),
                 .delete_frame => canvas.deleteFrame(),
-                .frame_tool => std.log.info("frame_tool", .{}),
+                .frame_tool => canvas.toggleFrameTool(),
                 .selection_tool => std.log.info("selection_tool", .{}),
             }
         }
