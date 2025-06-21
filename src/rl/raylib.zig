@@ -27,6 +27,7 @@ pub const loadImageFromTexture = rl.loadImageFromTexture;
 pub const getMouseWheelMove = rl.getMouseWheelMove;
 pub const getMouseDelta = rl.getMouseDelta;
 pub const ConfigFlags = rl.ConfigFlags;
+pub const setExitKey = rl.setExitKey;
 pub const setConfigFlags = rl.setConfigFlags;
 pub const getCharPressed = rl.getCharPressed;
 pub const imageDrawPixel = rl.imageDrawPixel;

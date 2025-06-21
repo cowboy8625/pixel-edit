@@ -240,15 +240,15 @@ pub fn load(self: *Self, path: []const u8) !void {
 
     const frame_rect = self.bounding_box.as(usize);
     const frame_width: usize = frame_rect.width + 1;
-    // const frame_height: usize = frame_rect.height + 1;
+    const frame_height: usize = frame_rect.height + 1;
     const total_width = rl.cast(usize, image.width);
-    // const total_height = rl.cast(usize, image.height);
+    const total_height = rl.cast(usize, image.height);
 
     const num_frames = total_width / frame_width;
-    // if (total_width % frame_width != 0 or total_height != frame_height) {
-    //     std.log.err("Invalid frame dimensions {d}x{d} != {d}x{d}", .{ frame_width, frame_height, total_width, total_height });
-    //     return error.InvalidFrameDimensions;
-    // }
+    if (total_width % frame_width != 0 or total_height != frame_height) {
+        std.log.err("Invalid frame dimensions {d}x{d} != {d}x{d}", .{ frame_width, frame_height, total_width, total_height });
+        return error.InvalidFrameDimensions;
+    }
 
     self.clear();
 
@@ -256,13 +256,10 @@ pub fn load(self: *Self, path: []const u8) !void {
         var frame = self.getCurrentFramePtr() orelse @panic("Cannot load into empty frame");
         for (0..frame_rect.height + 1) |y| {
             for (0..frame_rect.width + 1) |x| {
-                const global_x = frame_index * (frame_rect.width + x);
+                const global_x = frame_index * frame_width + x;
                 const color = rl.getImageColor(image, rl.cast(i32, global_x), rl.cast(i32, y));
                 const pos = rl.Vector2(usize).init(x, y).as(i32);
                 try frame.pixels.put(pos, color);
-                if (x == 16 and frame_index == 0) {
-                    std.log.info("Loading frame {any}, {any}", .{ pos, color });
-                }
             }
         }
         if (frame_index + 1 != num_frames) {
