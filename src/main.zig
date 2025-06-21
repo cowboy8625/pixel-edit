@@ -20,6 +20,7 @@ pub fn main() !void {
     });
     rl.initWindow(0, 0, "Pixel Edit");
     defer rl.closeWindow();
+    rl.setExitKey(.key_null);
 
     var canvas = try Canvas.init(
         allocator,
