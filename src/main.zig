@@ -1,470 +1,256 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
-const Ui = @import("Ui.zig");
+const Asset = @import("assets.zig");
+const rl = @import("rl/mod.zig");
+const event = @import("event.zig");
+const ControlPannel = @import("ControlPannel.zig");
+const ColorWheel = @import("ColorWheel.zig");
 const Canvas = @import("Canvas.zig");
-const rl = @import("raylib");
-const rg = @import("raygui");
-const utils = @import("utils.zig");
-const cast = utils.cast;
-const Context = @import("Context.zig");
-const handleCliArgs = @import("args.zig").handleCliArgs;
 const algorithms = @import("algorithms.zig");
-const Button = @import("Button.zig").Button;
-const Slider = @import("Slider.zig").Slider;
-
-test {
-    _ = @import("Canvas.zig");
-    _ = @import("Dragable.zig");
-    _ = @import("utils.zig");
-}
+const nfd = @import("nfd");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
     const allocator = gpa.allocator();
+    defer _ = gpa.deinit();
+
+    // ---------- SETUP ----------
+
+    rl.setConfigFlags(.{
+        .window_resizable = true,
+    });
+    rl.initWindow(0, 0, "Pixel Edit");
+    defer rl.closeWindow();
+    rl.setExitKey(.key_null);
 
     var canvas = try Canvas.init(
         allocator,
-        .{ .x = 0, .y = 0, .width = 16, .height = 16 },
-        .{ .x = 16, .y = 16 },
+        .{
+            .x = 0,
+            .y = 0,
+            .width = 15,
+            .height = 15,
+        },
+        16,
     );
     defer canvas.deinit();
 
-    var canvas_overlay_pixels = std.ArrayList(rl.Vector2).init(allocator);
-    defer canvas_overlay_pixels.deinit();
+    var control_pannel = try ControlPannel.init(
+        allocator,
+        canvas.bounding_box.getSize(),
+    );
+    defer control_pannel.deinit();
 
-    try handleCliArgs(allocator, &canvas);
+    var events = std.ArrayList(event.Event).init(allocator);
+    defer events.deinit();
 
-    const screen_width = 800;
-    const screen_height = 600;
-    rl.initWindow(screen_width, screen_height, "Pixel Edit");
-    defer rl.closeWindow();
+    var state: State = .none;
+    var annimation = Annimation{
+        .speed = 0.5,
+    };
 
-    var context = Context.init();
-    defer context.deinit();
-
-    guiSetup();
+    var color_wheel = ColorWheel.init(.{ .x = 200, .y = 200, .width = 200, .height = 200 });
 
     var camera = rl.Camera2D{
-        .offset = rl.Vector2{
-            .x = @divFloor(screen_width, 2) - @divFloor(canvas.rect.width, 2),
-            .y = @divFloor(screen_height, 2) - @divFloor(canvas.rect.height, 2),
-        },
-        .target = rl.Vector2{ .x = 0, .y = 0 },
+        .offset = rl.Vector2(i32).init(rl.getScreenWidth(), rl.getScreenHeight()).div(2).sub(canvas.getVisibleRect(i32).getSize().div(2)).asRl(),
+        .target = .{ .x = 0, .y = 0 },
         .rotation = 0,
         .zoom = 1,
     };
 
-    var ui = Ui.init(.{ .x = 0, .y = 0, .width = 110, .height = screen_height });
-    defer ui.deinit();
-    var frame_opacity_slider = Slider(u8, *Context).init(
-        context.frame_opacity,
-        0,
-        255,
-        .{
-            .x = 256,
-            .y = 20,
-        },
-        struct {
-            fn callback(value: u8, ctx: *Context) u8 {
-                ctx.frame_opacity = value;
-                return ctx.frame_opacity;
-            }
-        }.callback,
-    );
-
-    // -----  In World Space  ----
-    var change_canvas_width = IncCanvasWidth.init();
-    defer change_canvas_width.deinit();
-    var change_canvas_height = IncCanvasHeight.init();
-    defer change_canvas_height.deinit();
-    // ---------------------------
+    // -------- END SETUP --------
 
     rl.setTargetFPS(60);
     while (!rl.windowShouldClose()) {
-        // -------   UPDATE   -------
         const delta_time = rl.getFrameTime();
-        const pos = rl.getMousePosition();
-        const worldMousePosition = rl.getScreenToWorld2D(pos, camera);
+        const mouse = rl.getMousePosition();
+        const world_mouse = rl.getScreenToWorld2D(mouse, camera);
+        color_wheel.update(mouse, ControlPannel.getWidth(f32), control_pannel.state);
+        try control_pannel.update(mouse, &events);
+        const isMouseOverCanvas = rl.checkCollisionPointRec(world_mouse, canvas.getVisibleRect(f32));
 
-        if (context.path) |path| {
-            switch (context.path_action) {
-                .Save => canvas.save(path),
-                .Load => try canvas.load(path),
-            }
-            context.path = null;
-        }
-        try ui.update(pos, &context);
-        if (!context.flags.gui_active and
-            rl.checkCollisionPointRec(worldMousePosition, canvas.rect) and
-            rl.isMouseButtonDown(.mouse_button_right))
+        if (rl.isMouseButtonDown(.mouse_button_right) and
+            rl.checkCollisionPointRec(world_mouse, canvas.getVisibleRect(f32)) and
+            !(color_wheel.state == .visible and isMouseOverCanvas))
         {
             var delta = rl.getMouseDelta();
             delta = delta.scale(-1.0 / camera.zoom);
             camera.target = camera.target.add(delta);
         }
+        updateCameraZoom(&camera, mouse, world_mouse);
 
-        updateCameraZoom(&camera, pos, worldMousePosition);
-
-        canvas.update();
-        change_canvas_width.update(worldMousePosition, &canvas.size_in_pixels.x);
-        change_canvas_height.update(worldMousePosition, &canvas.size_in_pixels.y);
-
-        var canvas_rect: rl.Rectangle = if (context.brush.getSeletionRect()) |rect| .{
-            .x = rect.x * canvas.cell_size.x,
-            .y = rect.y * canvas.cell_size.y,
-            .width = rect.width * canvas.cell_size.x,
-            .height = rect.height * canvas.cell_size.y,
-        } else canvas.rect;
-        canvas_rect = if (context.brush.mode != .Select) canvas_rect else canvas.rect;
-        if (!context.flags.gui_active and rl.checkCollisionPointRec(worldMousePosition, canvas_rect)) {
-            rl.hideCursor();
-            context.brush.showOutline();
-            switch (context.brush.mode) {
-                .Draw => if (rl.isMouseButtonDown(.mouse_button_left)) {
-                    try canvas.insert(worldMousePosition.divide(canvas.cell_size), context.brush.color);
-                    context.last_cell_position = worldMousePosition;
-                },
-                .Erase => if (rl.isMouseButtonDown(.mouse_button_left)) {
-                    canvas.remove(worldMousePosition.divide(canvas.cell_size));
-                },
-                .Line => if (rl.isMouseButtonDown(.mouse_button_left)) {
-                    context.last_cell_position = worldMousePosition;
-                    for (canvas_overlay_pixels.items) |pixel| {
-                        try canvas.insert(pixel, context.brush.color);
-                    }
-                    canvas_overlay_pixels.clearRetainingCapacity();
-                },
-                .Fill => if (rl.isMouseButtonPressed(.mouse_button_left)) {
-                    const x = cast(usize, @divFloor(worldMousePosition.x, canvas.cell_size.x));
-                    const y = cast(usize, @divFloor(worldMousePosition.y, canvas.cell_size.y));
-                    try algorithms.floodFill(allocator, &canvas, context.brush, .{ .x = x, .y = y });
-                },
-                .ColorPicker => if (rl.isMouseButtonPressed(.mouse_button_left)) {
-                    const x = cast(usize, @divFloor(worldMousePosition.x, canvas.cell_size.x));
-                    const y = cast(usize, @divFloor(worldMousePosition.y, canvas.cell_size.y));
-                    const color = canvas.get(Canvas.Point{ .x = x, .y = y }) orelse rl.Color.blank;
-                    context.brush.color = color;
-                },
-                .Select => if (rl.isMouseButtonPressed(.mouse_button_left)) {
-                    context.brush.seletion_rect = .{
-                        .x = @divFloor(worldMousePosition.x, canvas.cell_size.x),
-                        .y = @divFloor(worldMousePosition.y, canvas.cell_size.y),
-                        .width = 1,
-                        .height = 1,
-                    };
-                } else if (rl.isMouseButtonReleased(.mouse_button_left)) {
-                    context.brush.restoreLastBushMode();
-                } else if (context.brush.seletion_rect != null) {
-                    const x = @divFloor(worldMousePosition.x, canvas.cell_size.x) + 1;
-                    const y = @divFloor(worldMousePosition.y, canvas.cell_size.y) + 1;
-                    context.brush.seletion_rect.?.width = x - context.brush.seletion_rect.?.x;
-                    context.brush.seletion_rect.?.height = y - context.brush.seletion_rect.?.y;
-                },
-            }
-        } else {
-            context.brush.hideOutline();
-            rl.showCursor();
+        if (rl.isKeyPressed(.key_f)) {
+            state = .fill;
+        } else if (rl.isKeyPressed(.key_b)) {
+            state = .draw;
+        } else if (rl.isKeyPressed(.key_l)) {
+            state = .line;
+        } else if (rl.isKeyPressed(.key_e)) {
+            state = .erase;
+        } else if (rl.isKeyPressed(.key_c) and color_wheel.state == .hidden) {
+            try events.append(.open_color_wheel);
+        } else if (rl.isKeyPressed(.key_c) and color_wheel.state == .visible) {
+            try events.append(.close_color_wheel);
         }
 
-        if (context.command) |command| {
-            switch (command) {
-                .IntoFrames => if (context.brush.seletion_rect != null and canvas.frames.items.len == 1) {
-                    var rect = context.brush.seletion_rect.?;
-                    const frames_x = cast(usize, @divTrunc(canvas.cell_size.x, rect.width));
-                    const frames_y = cast(usize, @divTrunc(canvas.cell_size.y, rect.height));
-
-                    for (0..frames_y) |y| {
-                        for (0..frames_x) |x| {
-                            rect.x = cast(f32, x) * rect.width;
-                            rect.y = cast(f32, y) * rect.height;
-                            try canvas.copyAeraToNewFrame(rect);
-                        }
-                    }
-                    canvas.size_in_pixels.x = rect.width;
-                    canvas.size_in_pixels.y = rect.height;
-                    canvas.deleteFrame(0);
-                    context.brush.seletion_rect = null;
-                    context.command = null;
-                } else {
-                    context.command = null;
+        for (events.items) |e| {
+            switch (e) {
+                .draw => state = .draw,
+                .draw_line => state = .line,
+                .erase => state = .erase,
+                .bucket => state = .fill,
+                .color_picker => state = .color_picker,
+                .close_control_pannel => control_pannel.hide(),
+                .open_control_pannel => control_pannel.show(),
+                .clicked => |we| switch (we) {
+                    .width_input => state = .widget_width_input,
+                    .height_input => state = .widget_height_input,
+                    .frame_speed_input => state = .widget_frame_speed_input,
                 },
-                .OpenMenu => {
-                    ui.openMenu();
-                    context.flags.menu_is_open = true;
-                    context.command = null;
+                .open_color_wheel => color_wheel.show(),
+                .close_color_wheel => color_wheel.hide(),
+                .set_frame_speed => |speed| annimation.speed = speed,
+                .set_canvas_width => |width| canvas.setWidth(width),
+                .set_canvas_height => |height| canvas.setHeight(height),
+                .open_save_file_browser => {
+                    const file_path = try nfd.saveFileDialog(null, null);
+                    if (file_path) |path| canvas.save(path);
                 },
-                .CloseMenu => {
-                    ui.closeMenu();
-                    context.flags.menu_is_open = false;
-                    context.command = null;
+                .open_load_file_browser => {
+                    const file_path = try nfd.openFileDialog(null, null);
+                    if (file_path) |path| try canvas.load(path);
                 },
-                .FlipHorizontal => {
-                    canvas.flipHorizontal();
-                    context.command = null;
-                },
-                .FlipVertical => {
-                    canvas.flipVertical();
-                    context.command = null;
-                },
-                .RotateLeft => {
-                    canvas.rotateLeft();
-                    context.command = null;
-                },
-                .RotateRight => {
-                    canvas.rotateRight();
-                    context.command = null;
-                },
-                .OpenColorPicker => {
-                    ui.openColorPicker();
-                    context.flags.color_picker_is_open = true;
-                    context.command = null;
-                },
-                .CloseColorPicker => {
-                    ui.closeColorPicker();
-                    context.flags.color_picker_is_open = false;
-                    context.command = null;
-                },
-                .OpenSaveFileManager => {
-                    ui.openSaveFileManager();
-                    context.flags.save_file_manager_is_open = true;
-                    context.command = null;
-                },
-                .CloseSaveFileManager => {
-                    ui.openSaveFileManager();
-                    context.flags.save_file_manager_is_open = false;
-                    context.command = null;
-                },
-                .OpenLoadFileManager => {
-                    ui.openLoadFileManager();
-                    context.flags.load_file_manager_is_open = true;
-                    context.command = null;
-                },
-                .CloseLoadFileManager => {
-                    ui.openLoadFileManager();
-                    context.flags.load_file_manager_is_open = false;
-                    context.command = null;
-                },
-                .TurnGridOn => {
-                    context.flags.draw_grid = true;
-                    context.command = null;
-                },
-                .TurnGridOff => {
-                    context.flags.draw_grid = false;
-                    context.command = null;
-                },
-                .FrameRight => {
-                    if (canvas.frame_id < canvas.frames.items.len - 1) {
-                        canvas.nextFrame();
-                    } else {
-                        try canvas.newFrame();
-                        canvas.nextFrame();
-                    }
-                    context.command = null;
-                },
-                .FrameLeft => {
-                    canvas.previousFrame();
-                    context.command = null;
-                },
-
-                .Play => {
-                    // TODO: implement flag for this
-                    canvas.animate(delta_time);
-                },
-                .Stop => {
-                    context.command = null;
-                },
+                .rotate_left => canvas.rotateLeft(),
+                .rotate_right => canvas.rotateRight(),
+                .flip_vertical => canvas.flipVertical(),
+                .flip_horizontal => canvas.flipHorizontal(),
+                .display_canvas_grid => canvas.toggleGrid(),
+                .play_animation => annimation.state = .play,
+                .stop_animation => annimation.state = .stop,
+                .next_frame => canvas.nextFrame(),
+                .previous_frame => canvas.previousFrame(),
+                .new_frame => try canvas.newFrame(),
+                .delete_frame => canvas.deleteFrame(),
+                .frame_tool => canvas.toggleFrameTool(),
+                .selection_tool => std.log.info("selection_tool", .{}),
             }
         }
 
-        if (context.brush.mode == .Line and rl.checkCollisionPointRec(worldMousePosition, canvas.rect)) {
-            canvas_overlay_pixels.clearRetainingCapacity();
-            const x1 = cast(i32, @divFloor(context.last_cell_position.x, canvas.cell_size.x));
-            const y1 = cast(i32, @divFloor(context.last_cell_position.y, canvas.cell_size.y));
-            const x2 = cast(i32, @divFloor(worldMousePosition.x, canvas.cell_size.x));
-            const y2 = cast(i32, @divFloor(worldMousePosition.y, canvas.cell_size.y));
-            try algorithms.bresenhamLine(x1, y1, x2, y2, &canvas_overlay_pixels);
-        } else {
-            canvas_overlay_pixels.clearRetainingCapacity();
+        events.clearRetainingCapacity();
+
+        const isControlDown = rl.isKeyDown(.key_left_control) or rl.isKeyDown(.key_right_control);
+
+        switch (state) {
+            .draw => if (rl.isMouseButtonDown(.mouse_button_left) and !isControlDown) {
+                _ = try canvas.insert(world_mouse.as(i32), color_wheel.getSelectedColor());
+            } else if (isControlDown and rl.isMouseButtonReleased(.mouse_button_left) and isMouseOverCanvas) {
+                try canvas.applyOverlay(color_wheel.getSelectedColor());
+            } else if (isControlDown and isMouseOverCanvas) {
+                try canvas.applyLineToOverlay(world_mouse.as(i32));
+            } else {
+                canvas.clearOverlay();
+            },
+            .line => if (rl.isMouseButtonDown(.mouse_button_left) and isMouseOverCanvas) {
+                try canvas.applyLineToOverlay(world_mouse.as(i32));
+            } else if (rl.isMouseButtonReleased(.mouse_button_left) and isMouseOverCanvas) {
+                try canvas.applyOverlay(color_wheel.getSelectedColor());
+            } else {
+                canvas.clearOverlay();
+            },
+            .fill => if (rl.isMouseButtonPressed(.mouse_button_left)) {
+                const starting_point = world_mouse.as(i32);
+                const color = color_wheel.getSelectedColor();
+                try algorithms.floodFill(allocator, &canvas, color, starting_point);
+            },
+            .erase => if (rl.isMouseButtonDown(.mouse_button_left)) {
+                const cursor = world_mouse.as(i32).sub(canvas.bounding_box.getPos()).div(canvas.pixels_size);
+                const frame = canvas.getCurrentFramePtr() orelse @panic("No frame");
+                if (frame.bounding_box.contains(cursor)) {
+                    _ = frame.pixels.remove(cursor);
+                }
+            },
+            .color_picker => if (rl.isMouseButtonPressed(.mouse_button_left)) {
+                const cursor = world_mouse.as(i32).sub(canvas.bounding_box.getPos()).div(canvas.pixels_size);
+                const frame = canvas.getCurrentFramePtr() orelse @panic("No frame");
+                if (frame.bounding_box.contains(cursor)) {
+                    if (frame.pixels.get(cursor)) |color| {
+                        color_wheel.setColor(color);
+                    }
+                }
+            },
+            .select => std.log.info("select\n", .{}),
+            .widget_width_input => {
+                try control_pannel.updateInput(.width_input, &state, &events);
+            },
+            .widget_height_input => {
+                try control_pannel.updateInput(.height_input, &state, &events);
+            },
+            .widget_frame_speed_input => {
+                try control_pannel.updateInput(.frame_speed_input, &state, &events);
+            },
+            .none => {},
         }
 
-        _ = frame_opacity_slider.update(pos, &context);
+        annimation.nextFrame(&canvas, delta_time);
 
-        // -------   UPDATE KEYS   -------
-        if (rl.isKeyPressed(.key_f1)) {
-            context.flags.debugging = !context.flags.debugging;
-        }
-        // ------- END UPDATE KEYS -------
-
-        // ------- END UPDATE -------
-        // -------    DRAW    -------
+        // -------- DRAW --------
         rl.beginDrawing();
-        rl.clearBackground(rl.Color.dark_gray);
+        rl.clearBackground(rl.Color.fromInt(0x21242bFF));
         defer rl.endDrawing();
+
         rl.beginMode2D(camera);
-
-        change_canvas_width.draw(canvas.size_in_pixels.x);
-        change_canvas_height.draw(canvas.size_in_pixels.y);
-        canvas.draw(context.frame_opacity);
-        if (context.brush.mode == .Line) {
-            for (canvas_overlay_pixels.items) |p| {
-                const rect = .{
-                    .x = p.x * canvas.cell_size.x,
-                    .y = p.y * canvas.cell_size.y,
-                    .width = canvas.cell_size.x,
-                    .height = canvas.cell_size.y,
-                };
-                rl.drawRectangleRec(rect, rl.Color.light_gray);
-            }
-        }
-        context.brush.draw(worldMousePosition, canvas.cell_size);
-        if (context.flags.draw_grid) {
-            drawGrid(canvas.size_in_pixels, canvas.cell_size);
-        }
-
-        if ((context.brush.mode == .Select and context.brush.seletion_rect != null) or context.brush.seletion_rect != null) {
-            if (context.brush.getSeletionRect()) |rect| {
-                const section_area = .{
-                    .x = rect.x * canvas.cell_size.x,
-                    .y = rect.y * canvas.cell_size.y,
-                    .width = rect.width * canvas.cell_size.x,
-                    .height = rect.height * canvas.cell_size.y,
-                };
-                rl.drawRectangleLinesEx(section_area, 5, rl.Color.black);
-            }
-        }
-
+        const m = if (isMouseOverCanvas) world_mouse else null;
+        canvas.draw(m);
         rl.endMode2D();
-        // -------    GUI     -------
-        if (context.flags.debugging) {
-            const ctext: [*:0]const u8 = @ptrCast(@tagName(context.brush.mode));
-            rl.drawText(
-                rl.textFormat("Bush Mode: %s", .{ctext}),
-                screen_width - 250, // X
-                screen_height - 20, // Y
-                20,
-                rl.Color.white,
-            );
-        }
 
-        if (canvas.frames.items.len > 1) {
-            rl.drawText(
-                rl.textFormat("Frame: %d/%d", .{ canvas.frame_id + 1, canvas.frames.items.len }),
-                screen_width - 150, // X
-                20, // Y
-                20,
-                rl.Color.white,
-            );
-
-            frame_opacity_slider.draw(.{
-                .x = screen_width - 500,
-                .y = 20,
-            });
-
-            rl.drawText(
-                rl.textFormat("%d", .{context.frame_opacity}),
-                screen_width - 500 + 260,
-                20, // Y
-                20,
-                rl.Color.white,
-            );
-        } else {
-            context.frame_opacity = 255;
-        }
-        try ui.draw(&context);
-
-        // -------  END GUI   -------
-        // -------  END DRAW  -------
+        color_wheel.draw();
+        control_pannel.draw();
     }
 }
 
-const IncCanvasWidth = struct {
+fn centerScreenX(comptime T: type) T {
+    const value = @divFloor(rl.getScreenWidth(), 2);
+    return rl.cast(T, value);
+}
+
+fn centerScreenY(comptime T: type) T {
+    const value = @divFloor(rl.getScreenHeight(), 2);
+    return rl.cast(T, value);
+}
+
+pub const State = enum {
+    draw,
+    line,
+    fill,
+    erase,
+    color_picker,
+    select,
+    widget_width_input,
+    widget_height_input,
+    widget_frame_speed_input,
+    none,
+};
+
+pub const Annimation = struct {
     const Self = @This();
+    const State = enum {
+        play,
+        stop,
+    };
 
-    plus_button_one: Button(*f32),
-    minus_button_one: Button(*f32),
+    state: Self.State = .stop,
+    speed: f32 = 2.0,
+    frame_length: f32 = 0.0,
 
-    pub fn init() Self {
-        var plus_button_one = Button(*f32).initWithText("+", .{ .x = 50, .y = -20 }, struct {
-            fn callback(arg: *f32) void {
-                arg.* += 1;
-            }
-        }.callback);
-        errdefer plus_button_one.deinit();
-        var minus_button_one = Button(*f32).initWithText("-", .{ .x = 0, .y = -20 }, struct {
-            fn callback(arg: *f32) void {
-                if (arg.* == 0) return;
-                arg.* -= 1;
-            }
-        }.callback);
-        errdefer minus_button_one.deinit();
-        return .{
-            .plus_button_one = plus_button_one,
-            .minus_button_one = minus_button_one,
-        };
-    }
-
-    pub fn deinit(self: *Self) void {
-        self.plus_button_one.deinit();
-        self.minus_button_one.deinit();
-    }
-
-    pub fn update(self: *Self, mouse_pos: rl.Vector2, size: *f32) void {
-        _ = self.plus_button_one.update(mouse_pos, size);
-        _ = self.minus_button_one.update(mouse_pos, size);
-    }
-
-    pub fn draw(self: *Self, size: f32) void {
-        rl.drawText(rl.textFormat("%.0f", .{size}), 20, -20, 20, rl.Color.black);
-        self.plus_button_one.draw();
-        self.minus_button_one.draw();
+    pub fn nextFrame(self: *Self, canvas: *Canvas, delta: f32) void {
+        self.frame_length += delta;
+        if (self.state == .play and self.frame_length >= self.speed) {
+            canvas.nextFrame();
+            self.frame_length = 0.0;
+        }
     }
 };
 
-const IncCanvasHeight = struct {
-    const Self = @This();
-
-    plus_button_one: Button(*f32),
-    minus_button_one: Button(*f32),
-
-    pub fn init() Self {
-        var plus_button_one = Button(*f32).initWithText("+", .{ .x = -20, .y = 40 }, struct {
-            fn callback(arg: *f32) void {
-                arg.* += 1;
-            }
-        }.callback);
-        errdefer plus_button_one.deinit();
-        var minus_button_one = Button(*f32).initWithText("-", .{ .x = -20, .y = 0 }, struct {
-            fn callback(arg: *f32) void {
-                if (arg.* == 0) return;
-                arg.* -= 1;
-            }
-        }.callback);
-        errdefer minus_button_one.deinit();
-        return .{
-            .plus_button_one = plus_button_one,
-            .minus_button_one = minus_button_one,
-        };
-    }
-
-    pub fn deinit(self: *Self) void {
-        self.plus_button_one.deinit();
-        self.minus_button_one.deinit();
-    }
-
-    pub fn update(self: *Self, mouse_pos: rl.Vector2, size: *f32) void {
-        _ = self.plus_button_one.update(mouse_pos, size);
-        _ = self.minus_button_one.update(mouse_pos, size);
-    }
-
-    pub fn draw(self: *Self, size: f32) void {
-        rl.drawText(rl.textFormat("%.0f", .{size}), -25, 20, 20, rl.Color.black);
-        self.plus_button_one.draw();
-        self.minus_button_one.draw();
-    }
-};
-
-fn updateCameraZoom(camera: *rl.Camera2D, pos: rl.Vector2, worldMousePosition: rl.Vector2) void {
+fn updateCameraZoom(camera: *rl.Camera2D, pos: rl.Vector2(f32), worldMousePosition: rl.Vector2(f32)) void {
     const wheel = rl.getMouseWheelMove();
 
     if (wheel != 0) {
@@ -479,40 +265,4 @@ fn updateCameraZoom(camera: *rl.Camera2D, pos: rl.Vector2, worldMousePosition: r
         camera.target.x -= (mousePositionAfter.x - worldMousePosition.x);
         camera.target.y -= (mousePositionAfter.y - worldMousePosition.y);
     }
-}
-
-fn drawGrid(size: rl.Vector2, cells: rl.Vector2) void {
-    const px_width = cast(i32, size.x * cells.x);
-    const px_height = cast(i32, size.y * cells.y);
-    for (0..(cast(usize, size.x) + 1)) |x| {
-        const ix = cast(i32, cells.x) * cast(i32, x);
-        rl.drawLine(ix, 0, ix, px_height, rl.Color.white);
-    }
-    for (0..(cast(usize, size.y) + 1)) |y| {
-        const iy = cast(i32, cells.y) * cast(i32, y);
-        rl.drawLine(0, iy, px_width, iy, rl.Color.white);
-    }
-}
-
-fn guiSetup() void {
-    rl.setConfigFlags(
-        rl.ConfigFlags{ .window_resizable = true },
-    );
-    rl.setExitKey(rl.KeyboardKey.key_null);
-
-    rg.guiSetStyle(
-        rg.GuiState.state_normal,
-        // cast(i32, rg.GuiControl.default),
-        rg.GuiControlProperty.text_color_focused,
-        // cast(i32, rg.GuiDefaultProperty.text_size),
-        20,
-    );
-
-    rg.guiSetStyle(
-        rg.GuiState.state_normal,
-        // cast(i32, rg.GuiControl.default),
-        // cast(i32, rg.GuiControlProperty.text_color_normal),
-        rg.GuiControlProperty.text_color_normal,
-        rl.Color.black.toInt(),
-    );
 }

@@ -1,16 +1,21 @@
 .{
-    .name = "pixel-edit",
-    .version = "0.1.0",
+    .name = "zig-zion-single-player",
+    .version = "0.0.0",
+    .minimum_zig_version = "0.13.0",
     .dependencies = .{
         .@"raylib-zig" = .{
             .url = "https://github.com/Not-Nik/raylib-zig/archive/2176d37bcc83af8acdabf4f8ce51fd93060f15b2.tar.gz",
             .hash = "1220275ac250aa893dd60d479de6e65002cebd74d6e2e062a2414c5e6e93c99f53cc",
         },
-        // .@"zig-nfd" = .{
-        //     .path = "../nfd.zig",
-        // },
+        .ziglua = .{
+            .url = "https://github.com/natecraddock/ziglua/archive/bcbfe40acd7218430b5fb7a880615b2bf15c02ac.tar.gz",
+            .hash = "1220a7983916ac2bcba3ded67174ef354012da525c7f85b0e48a416368a637012d78",
+        },
+        .nfd = .{
+            .url = "https://github.com/fabioarnold/nfd-zig/archive/ad81729d33da30d5f4fd23718debec48245121ca.tar.gz",
+            .hash = "1220a679380847513262c8c5c474d4a415f9ecc4921c8c6aefbdbdce66cf2aa19ceb",
+        },
     },
-
     .paths = .{
         "",
     },
