@@ -1,6 +1,6 @@
 # Pixel Edit
 
-<img src="https://github.com/user-attachments/assets/659f4d49-a4ec-4d6d-bac0-e9a76f2a73d0"/>
+<img src="https://github.com/user-attachments/assets/37df90ca-621f-4db8-9f3e-a822d0c053b0"/>
 
 ### Building
 
